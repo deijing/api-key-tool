@@ -34,7 +34,18 @@ cd api-key-tool
 - [Docker部署指南](./DOCKER_DEPLOY.md)
 - [OrbStack部署指南](./ORBSTACK.md) - macOS用户推荐，性能更好
 
-### 方式二：本地开发
+### 方式二：Vercel一键部署（推荐）
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/deijing/api-key-tool)
+
+点击上方按钮即可一键部署到Vercel，完全免费！
+
+**部署后访问域名**：
+- 固定域名：`https://api-key-tool-indol.vercel.app`
+- 自定义域名：`https://nekoapi-token.vercel.app`
+- 或者你自己绑定的域名（支持未备案域名）
+
+### 方式三：本地开发
 
 #### 1. 安装依赖
 
