@@ -1,8 +1,23 @@
-
-import { Nav, Typography } from '@douyinfe/semi-ui';
+import React, { useState } from 'react';
+import { Nav, Typography, Button } from '@douyinfe/semi-ui';
 import { IconTag } from '@douyinfe/semi-icons-lab';
+import { IconSetting } from '@douyinfe/semi-icons';
+import SettingsPanel from './SettingsPanel';
 
 const HeaderBar = () => {
+  const [settingsVisible, setSettingsVisible] = useState(false);
+
+  const handleSettingsClick = () => {
+    setSettingsVisible(true);
+  };
+
+  const handleSettingsClose = () => {
+    setSettingsVisible(false);
+  };
+
+  const handleConfigChange = () => {
+    // 配置更改后的处理（可以在这里添加刷新提示等）
+  };
 
   return (
     <div
@@ -20,11 +35,24 @@ const HeaderBar = () => {
             text: '令牌查询',
             logo: (
               <div style={{ width: '100%', height: '100%' }}>
-                < IconTag size='large' />
+                <IconTag size='large' />
               </div>
             )
           }
         }
+      />
+      <Button
+        icon={<IconSetting />}
+        theme='borderless'
+        onClick={handleSettingsClick}
+        style={{ marginRight: 16 }}
+      >
+        设置
+      </Button>
+      <SettingsPanel
+        visible={settingsVisible}
+        onClose={handleSettingsClose}
+        onConfigChange={handleConfigChange}
       />
     </div>
   );
