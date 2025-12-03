@@ -1,7 +1,10 @@
 # ====================================
-# 多阶段构建 - 构建阶段
+# 多阶段构建 - 使用国内镜像源（阿里云）
 # ====================================
-FROM node:16-alpine AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/library/node:16-alpine AS builder
+
+# 设置npm国内镜像（淘宝镜像）
+RUN npm config set registry https://registry.npmmirror.com
 
 # 设置工作目录
 WORKDIR /app
@@ -29,9 +32,9 @@ ENV REACT_APP_BASE_URL=${REACT_APP_BASE_URL}
 RUN npm run build
 
 # ====================================
-# 生产阶段 - Nginx
+# 生产阶段 - Nginx（使用国内镜像）
 # ====================================
-FROM nginx:1.25-alpine
+FROM registry.cn-hangzhou.aliyuncs.com/library/nginx:1.25-alpine
 
 # 复制自定义nginx配置
 COPY nginx.conf /etc/nginx/conf.d/default.conf

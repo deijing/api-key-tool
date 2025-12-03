@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Typography, Table, Tag, Spin, Card, Collapse, Toast, Space, Tabs, TabPane, Progress } from '@douyinfe/semi-ui';
+import { Button, Input, Typography, Table, Tag, Spin, Card, Collapse, Toast, Space, Tabs, TabPane } from '@douyinfe/semi-ui';
 import { IconSearch, IconCopy, IconDownload, IconUpload } from '@douyinfe/semi-icons';
 import { API, timestamp2string, copy, getConfig } from '../helpers';
 import { getAllApiConfigs, getAllTokenConfigs, addApiConfig, addTokenConfig } from '../helpers/utils';
@@ -55,24 +55,9 @@ const KeyUsage = () => {
     const [activeKeys, setActiveKeys] = useState([]);
     const [tokenValid, setTokenValid] = useState(false);
 
-    // 账户查询相关状态
-    const [accessToken, setAccessToken] = useState('');
-    const [userId, setUserId] = useState('');
-    const [showPassword, setShowPassword] = useState(false); // 控制密码显示
-    const [accountData, setAccountData] = useState({
-        planName: '',
-        total: 0,
-        remaining: 0,
-        used: 0,
-        unit: 'USD'
-    });
-    const [accountLoading, setAccountLoading] = useState(false);
-    const [accountValid, setAccountValid] = useState(false);
-
     // 从配置中读取设置（优先使用 localStorage，否则使用环境变量）
     const showDetail = getConfig('SHOW_DETAIL');
     const showBalance = getConfig('SHOW_BALANCE');
-    const baseUrl = getConfig('BASE_URL');
     // const [quotaPerUnit, setQuotaPerUnit] = useState('未知');
 
     // const fetchQuotaPerUnit = async () => {
@@ -172,64 +157,6 @@ const KeyUsage = () => {
             setLoading(false);
             return;
         }
-    };
-
-    const fetchAccountData = async () => {
-        // 输入验证和格式化
-        const trimmedToken = accessToken.trim();
-        const trimmedUserId = userId.trim();
-
-        if (!trimmedToken || !trimmedUserId) {
-            Toast.warning('请输入访问令牌和用户ID');
-            return;
-        }
-
-        // 开始查询前先重置旧数据
-        resetAccountData();
-        setAccountLoading(true);
-
-        try {
-            // 通过Vercel云函数代理请求
-            const res = await API.get('/api/proxy/api/user/self', {
-                headers: {
-                    'Authorization': `Bearer ${trimmedToken}`,
-                    'New-Api-User': trimmedUserId,
-                    'X-Target-BaseUrl': baseUrl  // 云函数根据这个头转发请求
-                },
-            });
-
-            if (res.data.success && res.data.data) {
-                const data = res.data.data;
-                setAccountData({
-                    planName: data.group || '默认套餐',
-                    remaining: data.quota / 500000,
-                    used: data.used_quota / 500000,
-                    total: (data.quota + data.used_quota) / 500000,
-                    unit: 'USD'
-                });
-                setAccountValid(true);
-                Toast.success('查询成功');
-            } else {
-                const errorMsg = res.data.message || '查询失败';
-                Toast.error(`查询失败: ${errorMsg}`);
-            }
-        } catch (e) {
-            const errorMsg = e.response?.data?.message || e.message || '未知错误';
-            Toast.error(`查询失败: ${errorMsg}。请检查访问令牌和用户ID是否正确`);
-        } finally {
-            setAccountLoading(false);
-        }
-    };
-
-    const resetAccountData = () => {
-        setAccountData({
-            planName: '',
-            total: 0,
-            remaining: 0,
-            used: 0,
-            unit: 'USD'
-        });
-        setAccountValid(false);
     };
 
     const copyText = async (text) => {
@@ -390,17 +317,6 @@ const KeyUsage = () => {
         copyText(info);
     };
 
-    const copyAccountInfo = (e) => {
-        e.stopPropagation();
-        const usageRate = accountData.total > 0 ? ((accountData.used / accountData.total) * 100).toFixed(2) : '0.00';
-        const info = `套餐名称: ${accountData.planName}
-总额度: $${accountData.total.toFixed(3)}
-剩余额度: $${accountData.remaining.toFixed(3)}
-已用额度: $${accountData.used.toFixed(3)}
-使用率: ${usageRate}%`;
-        copyText(info);
-    };
-
     const exportCSV = (e) => {
         e.stopPropagation();
         const csvData = logs.map(log => ({
@@ -427,11 +343,6 @@ const KeyUsage = () => {
         setActiveTab(key);
         // 保存当前tab到localStorage,刷新后保持在同一页面
         localStorage.setItem('active_tab', key);
-        // 切换离开账户页时清理状态，保持干净
-        if (key !== 'account' && accountValid) {
-            // 可选：切换时不清理，保留数据供用户返回查看
-            // resetAccountData();
-        }
     };
 
     // 导出全部配置（API配置 + 令牌配置）

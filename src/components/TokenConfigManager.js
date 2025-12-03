@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber, Collapse, Table, Tag } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconCopy, IconDownload, IconUpload, IconImport, IconExport } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload } from '@douyinfe/semi-icons';
 import { API } from '../helpers';
 import {
     getAllTokenConfigs,

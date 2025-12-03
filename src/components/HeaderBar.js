@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Nav, Typography, Button } from '@douyinfe/semi-ui';
+import { Nav, Button } from '@douyinfe/semi-ui';
 import { IconTag } from '@douyinfe/semi-icons-lab';
 import { IconSetting } from '@douyinfe/semi-icons';
 import SettingsPanel from './SettingsPanel';

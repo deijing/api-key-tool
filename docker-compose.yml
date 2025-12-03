@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  api-key-tool:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 构建时参数（可以在这里修改默认值）
+        REACT_APP_SHOW_DETAIL: ${REACT_APP_SHOW_DETAIL:-true}
+        REACT_APP_SHOW_BALANCE: ${REACT_APP_SHOW_BALANCE:-true}
+        REACT_APP_BASE_URL: ${REACT_APP_BASE_URL:-https://api.oaipro.com}
+
+    # 镜像名称和标签
+    image: api-key-tool:latest
+
+    # 容器名称
+    container_name: api-key-tool
+
+    # 端口映射（宿主机:容器）
+    ports:
+      - "${PORT:-3000}:80"
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 资源限制（可选，防止容器占用过多资源）
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # 环境变量（运行时）
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+
+    # 网络配置
+    networks:
+      - api-key-tool-network
+
+networks:
+  api-key-tool-network:
+    driver: bridge
