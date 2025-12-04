@@ -169,15 +169,30 @@ const TokenConfigManager = () => {
             });
             const usage = usageRes.data.total_usage / 100;
 
-            // 查询今日使用量
-            let today = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
-            const todayUsageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${today}&end_date=${today}`, {
-                headers: {
-                    'Authorization': `Bearer ${token.apiKey}`,
-                    'X-Target-BaseUrl': token.baseUrl
-                },
-            });
-            const todayUsage = todayUsageRes.data.total_usage / 100;
+            // 查询今日使用量：通过日志计算
+            let todayUsage = 0;
+            try {
+                const logRes = await API.get(`/api/proxy/api/log/token?key=${token.apiKey}`, {
+                    headers: {
+                        'X-Target-BaseUrl': token.baseUrl
+                    }
+                });
+                const { success, data: logData } = logRes.data;
+                if (success && logData && Array.isArray(logData)) {
+                    // 获取今天0点的时间戳
+                    const todayStart = new Date();
+                    todayStart.setHours(0, 0, 0, 0);
+                    const todayStartTimestamp = todayStart.getTime() / 1000;
+
+                    // 筛选今日的日志并累加 quota
+                    todayUsage = logData
+                        .filter(log => log.created_at >= todayStartTimestamp)
+                        .reduce((sum, log) => sum + (log.quota || 0), 0) / 500000;
+                }
+            } catch (err) {
+                console.log('[TokenConfigManager] 查询今日使用日志失败，使用默认值0:', err);
+                todayUsage = 0;
+            }
 
             setQueryData(prev => ({
                 ...prev,
@@ -628,7 +643,7 @@ const TokenConfigManager = () => {
                                     </Text>
                                     {data.todayUsage !== undefined && (
                                         <Text style={{ fontSize: 11 }}>
-                                            今日：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
+                                            今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
                                         </Text>
                                     )}
                                 </div>
