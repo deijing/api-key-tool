@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber, Collapse, Table, Tag } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle, IconCopy } from '@douyinfe/semi-icons';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -34,6 +34,7 @@ const TokenConfigManager = () => {
     const [formVisible, setFormVisible] = useState(false);
     const [editingToken, setEditingToken] = useState(null);
     const [formApi, setFormApi] = useState(null);
+    const [presetTokenValues, setPresetTokenValues] = useState(null); // 用于复制配置时的预填值
 
     // 自动查询相关状态
     const [autoRefresh, setAutoRefresh] = useState(() => {
@@ -77,16 +78,21 @@ const TokenConfigManager = () => {
     useEffect(() => {
         if (formVisible && formApi) {
             if (editingToken) {
+                // 编辑现有配置
                 formApi.setValues({
                     name: editingToken.name,
                     baseUrl: editingToken.baseUrl,
                     apiKey: editingToken.apiKey || ''
                 });
+            } else if (presetTokenValues) {
+                // 复制配置：预填部分值
+                formApi.setValues(presetTokenValues);
             } else {
+                // 新建配置：空表单
                 formApi.setValues({ name: '', baseUrl: '', apiKey: '' });
             }
         }
-    }, [formVisible, editingToken, formApi]);
+    }, [formVisible, editingToken, presetTokenValues, formApi]);
 
     const loadConfigs = () => {
         const configs = getAllTokenConfigs();
@@ -283,13 +289,27 @@ const TokenConfigManager = () => {
     // 打开添加对话框
     const handleAdd = () => {
         setEditingToken(null);
+        setPresetTokenValues(null);
         setFormVisible(true);
     };
 
     // 打开编辑对话框
     const handleEdit = (token) => {
         setEditingToken(token);
+        setPresetTokenValues(null);
         setFormVisible(true);
+    };
+
+    // 复制配置：预填 name（加副本标识）和 baseUrl，清空 apiKey
+    const handleCopy = (token) => {
+        setEditingToken(null);
+        setPresetTokenValues({
+            name: `${token.name} (副本)`,
+            baseUrl: token.baseUrl,
+            apiKey: ''
+        });
+        setFormVisible(true);
+        Toast.info('请填写新的API Key');
     };
 
     // 保存令牌
@@ -615,6 +635,16 @@ const TokenConfigManager = () => {
                             )}
                             <Button
                                 theme="borderless"
+                                icon={<IconCopy />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopy(token);
+                                }}
+                                size="small"
+                                title="复制配置"
+                            />
+                            <Button
+                                theme="borderless"
                                 icon={<IconEdit />}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -741,7 +771,7 @@ const TokenConfigManager = () => {
                                 baseUrl: editingToken.baseUrl,
                                 apiKey: editingToken.apiKey || ''
                               }
-                            : { name: '', baseUrl: '', apiKey: '' }
+                            : presetTokenValues || { name: '', baseUrl: '', apiKey: '' }
                     }
                 >
                     <Form.Input
@@ -759,14 +789,26 @@ const TokenConfigManager = () => {
                             { required: true, message: 'Base URL 不能为空' },
                             {
                                 validator: (rule, value) => {
-                                    if (value && value.endsWith('/')) {
+                                    if (!value) return true;
+
+                                    // 检查是否以斜杠结尾
+                                    if (value.endsWith('/')) {
                                         return '结尾不要带 /';
                                     }
+
+                                    // 强制要求使用HTTPS,避免重定向导致CORS错误
+                                    if (!value.startsWith('https://')) {
+                                        if (value.startsWith('http://')) {
+                                            return '必须使用 HTTPS 协议(http:// 会导致重定向和CORS错误)';
+                                        }
+                                        return '必须以 https:// 开头';
+                                    }
+
                                     return true;
                                 }
                             }
                         ]}
-                        extraText="结尾不要带 /"
+                        extraText="必须使用 HTTPS 协议,结尾不要带 /"
                         style={{ marginBottom: 12 }}
                     />
                     <Form.Input

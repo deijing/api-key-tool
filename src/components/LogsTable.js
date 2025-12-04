@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Input, Typography, Table, Tag, Spin, Card, Collapse, Toast, Space, Tabs, TabPane } from '@douyinfe/semi-ui';
-import { IconSearch, IconCopy, IconDownload, IconUpload } from '@douyinfe/semi-icons';
+import { IconSearch, IconCopy, IconDownload, IconUpload, IconPlus } from '@douyinfe/semi-icons';
 import { API, timestamp2string, copy, getConfig } from '../helpers';
 import { getAllApiConfigs, getAllTokenConfigs, addApiConfig, addTokenConfig } from '../helpers/utils';
 import { stringToColor } from '../helpers/render';
@@ -317,6 +317,99 @@ const KeyUsage = () => {
         copyText(info);
     };
 
+    const handleAddTokenConfig = (e) => {
+        e.stopPropagation();
+
+        // 先trim处理输入
+        const trimmedKey = (key || '').trim();
+        const trimmedBaseUrl = (tokenBaseUrl || '').trim();
+
+        // 检查查询状态和必填项
+        if (!tokenValid || !trimmedKey || !trimmedBaseUrl) {
+            Toast.warning('请先完成令牌查询');
+            return;
+        }
+
+        // 验证令牌格式
+        if (!/^sk-[a-zA-Z0-9]{20,}$/.test(trimmedKey)) {
+            Toast.error('令牌格式非法！令牌必须以 sk- 开头，且至少包含20个字符');
+            return;
+        }
+
+        // 验证Base URL格式
+        if (trimmedBaseUrl.endsWith('/')) {
+            Toast.error('Base URL 结尾不要带 /');
+            return;
+        }
+        if (!trimmedBaseUrl.startsWith('https://')) {
+            Toast.error('Base URL 必须使用 HTTPS 协议');
+            return;
+        }
+
+        // 规范化Base URL（小写scheme和host部分）
+        let normalizedBaseUrl;
+        try {
+            const url = new URL(trimmedBaseUrl);
+            url.protocol = url.protocol.toLowerCase();
+            url.hostname = url.hostname.toLowerCase();
+            normalizedBaseUrl = url.toString();
+            if (normalizedBaseUrl.endsWith('/')) {
+                normalizedBaseUrl = normalizedBaseUrl.slice(0, -1);
+            }
+        } catch (error) {
+            Toast.error('Base URL 格式错误');
+            return;
+        }
+
+        // 检查是否已存在相同配置（规范化后的baseUrl + apiKey）
+        const existingConfigs = getAllTokenConfigs();
+        const isDuplicate = existingConfigs.some(config => {
+            // 对已存在的配置也进行规范化比较
+            let existingUrl;
+            try {
+                const url = new URL(config.baseUrl);
+                url.protocol = url.protocol.toLowerCase();
+                url.hostname = url.hostname.toLowerCase();
+                existingUrl = url.toString();
+                if (existingUrl.endsWith('/')) {
+                    existingUrl = existingUrl.slice(0, -1);
+                }
+            } catch {
+                existingUrl = config.baseUrl;
+            }
+            return existingUrl === normalizedBaseUrl && config.apiKey === trimmedKey;
+        });
+
+        if (isDuplicate) {
+            Toast.warning('该令牌配置已存在');
+            return;
+        }
+
+        // 生成默认名称
+        const timestamp = new Date().toLocaleString('zh-CN', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }).replace(/\//g, '-');
+        const defaultName = `令牌配置 ${timestamp}`;
+
+        // 添加到令牌配置
+        const newConfig = addTokenConfig(defaultName, normalizedBaseUrl, trimmedKey);
+        if (newConfig) {
+            Toast.success('已添加到令牌配置管理');
+            // 切换到令牌配置管理tab并刷新页面以确保配置列表更新
+            setActiveTab('tokenConfig');
+            localStorage.setItem('active_tab', 'tokenConfig');
+            // 延迟刷新，确保tab切换完成
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else {
+            Toast.error('添加失败，请重试');
+        }
+    };
+
     const exportCSV = (e) => {
         e.stopPropagation();
         const csvData = logs.map(log => ({
@@ -493,7 +586,14 @@ const KeyUsage = () => {
                         <Input
                             showClear
                             value={tokenBaseUrl}
-                            onChange={(value) => setTokenBaseUrl(value)}
+                            onChange={(value) => {
+                                setTokenBaseUrl(value);
+                                // 输入改变时重置查询状态，防止用户修改后添加不匹配的配置
+                                if (tokenValid) {
+                                    setTokenValid(false);
+                                    resetData();
+                                }
+                            }}
                             placeholder="请输入API的Base URL（例如：https://api.openai.com）"
                             addonBefore="Base URL"
                             style={{ width: '100%' }}
@@ -507,7 +607,14 @@ const KeyUsage = () => {
                         <Input
                             showClear
                             value={key}
-                            onChange={(value) => setKey(value)}
+                            onChange={(value) => {
+                                setKey(value);
+                                // 输入改变时重置查询状态，防止用户修改后添加不匹配的配置
+                                if (tokenValid) {
+                                    setTokenValid(false);
+                                    resetData();
+                                }
+                            }}
                             placeholder="请输入要查询的令牌（sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx）"
                             prefix={<IconSearch />}
                             suffix={
@@ -537,9 +644,14 @@ const KeyUsage = () => {
                         header="令牌信息"
                         itemKey="1"
                         extra={
-                            <Button icon={<IconCopy />} theme='borderless' type='primary' onClick={(e) => copyTokenInfo(e)} disabled={!tokenValid}>
-                                复制令牌信息
-                            </Button>
+                            <Space>
+                                <Button icon={<IconPlus />} theme='borderless' type='primary' onClick={(e) => handleAddTokenConfig(e)} disabled={!tokenValid}>
+                                    添加到配置
+                                </Button>
+                                <Button icon={<IconCopy />} theme='borderless' type='primary' onClick={(e) => copyTokenInfo(e)} disabled={!tokenValid}>
+                                    复制令牌信息
+                                </Button>
+                            </Space>
                         }
                         disabled={!tokenValid}
                     >

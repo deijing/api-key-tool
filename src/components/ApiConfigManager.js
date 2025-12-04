@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconUpload, IconDownload, IconHandle } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconUpload, IconDownload, IconHandle, IconCopy } from '@douyinfe/semi-icons';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -24,6 +24,7 @@ const ApiConfigManager = () => {
     const [apiFormVisible, setApiFormVisible] = useState(false);
     const [editingApi, setEditingApi] = useState(null);
     const [apiFormApi, setApiFormApi] = useState(null);
+    const [presetApiValues, setPresetApiValues] = useState(null); // 用于复制配置时的预填值
 
     // 自动查询相关状态
     const [autoRefresh, setAutoRefresh] = useState(() => {
@@ -67,17 +68,22 @@ const ApiConfigManager = () => {
     useEffect(() => {
         if (apiFormVisible && apiFormApi) {
             if (editingApi) {
+                // 编辑现有配置
                 apiFormApi.setValues({
                     name: editingApi.name,
                     baseUrl: editingApi.baseUrl,
                     accessToken: editingApi.accessToken || '',
                     userId: editingApi.userId || ''
                 });
+            } else if (presetApiValues) {
+                // 复制配置：预填部分值
+                apiFormApi.setValues(presetApiValues);
             } else {
+                // 新建配置：空表单
                 apiFormApi.setValues({ name: '', baseUrl: '', accessToken: '', userId: '' });
             }
         }
-    }, [apiFormVisible, editingApi, apiFormApi]);
+    }, [apiFormVisible, editingApi, presetApiValues, apiFormApi]);
 
     const loadConfigs = () => {
         const configs = getAllApiConfigs();
@@ -278,13 +284,28 @@ const ApiConfigManager = () => {
     // 打开添加对话框
     const handleAddApi = () => {
         setEditingApi(null);
+        setPresetApiValues(null);
         setApiFormVisible(true);
     };
 
     // 打开编辑对话框
     const handleEditApi = (api) => {
         setEditingApi(api);
+        setPresetApiValues(null);
         setApiFormVisible(true);
+    };
+
+    // 复制配置：预填 name（加副本标识）和 baseUrl，清空凭证
+    const handleCopyApi = (api) => {
+        setEditingApi(null);
+        setPresetApiValues({
+            name: `${api.name} (副本)`,
+            baseUrl: api.baseUrl,
+            accessToken: '',
+            userId: ''
+        });
+        setApiFormVisible(true);
+        Toast.info('请填写新的访问令牌和用户ID');
     };
 
     // 保存 API
@@ -563,6 +584,16 @@ const ApiConfigManager = () => {
                             )}
                             <Button
                                 theme="borderless"
+                                icon={<IconCopy />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopyApi(api);
+                                }}
+                                size="small"
+                                title="复制配置"
+                            />
+                            <Button
+                                theme="borderless"
                                 icon={<IconEdit />}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -692,7 +723,7 @@ const ApiConfigManager = () => {
                                 accessToken: editingApi.accessToken || '',
                                 userId: editingApi.userId || ''
                               }
-                            : { name: '', baseUrl: '', accessToken: '', userId: '' }
+                            : presetApiValues || { name: '', baseUrl: '', accessToken: '', userId: '' }
                     }
                 >
                     <Form.Input
