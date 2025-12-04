@@ -186,6 +186,7 @@ const KeyUsage = () => {
                             onClick={() => {
                                 copyText(text);
                             }}
+                            className="tag-interactive"
                         >
                             {' '}
                             {text}{' '}
@@ -209,6 +210,7 @@ const KeyUsage = () => {
                             onClick={() => {
                                 copyText(text);
                             }}
+                            className="tag-interactive"
                         >
                             {' '}
                             {text}{' '}
@@ -566,12 +568,14 @@ const KeyUsage = () => {
 
     return (
         <Card
+            className="card-elevate-premium"
             title={
-                <Space>
+                <Space className="btn-group">
                     <Button
                         icon={<IconUpload />}
                         onClick={handleImportAllConfigs}
                         size="small"
+                        className="btn-ghost"
                     >
                         导入全部配置
                     </Button>
@@ -579,13 +583,14 @@ const KeyUsage = () => {
                         icon={<IconDownload />}
                         onClick={handleExportAllConfigs}
                         size="small"
+                        className="btn-ghost"
                     >
                         导出全部配置
                     </Button>
                 </Space>
             }
         >
-            <Tabs activeKey={activeTab} onChange={handleTabChange} type="line">
+            <Tabs activeKey={activeTab} onChange={handleTabChange} type="line" className="tab-animated">
                 <TabPane tab="令牌查询" itemKey="token">
                     {/* Base URL 输入框 */}
                     <div style={{ marginBottom: 12 }}>
@@ -603,6 +608,7 @@ const KeyUsage = () => {
                             placeholder="请输入API的Base URL（例如：https://api.openai.com）"
                             addonBefore="Base URL"
                             style={{ width: '100%' }}
+                            className="input-focus"
                         />
                         <Text type="tertiary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
                             临时查询用，适合测试不同API服务商的令牌。长期使用请在"令牌配置管理"中添加
@@ -627,6 +633,7 @@ const KeyUsage = () => {
                                 <Button
                                     onClick={fetchData}
                                     loading={loading}
+                                    className="btn-strong"
                                 >
                                     查询
                                 </Button>
@@ -636,6 +643,7 @@ const KeyUsage = () => {
                                     fetchData();
                                 }
                             }}
+                            className="input-focus-premium"
                         />
                     </div>
                     <Collapse activeKey={activeKeys} onChange={(keys) => {
@@ -644,17 +652,17 @@ const KeyUsage = () => {
                         } else {
                             setActiveKeys(keys);
                         }
-                    }}>
+                    }} className="collapse-animated">
                 {showBalance && (
                     <Panel
                         header="令牌信息"
                         itemKey="1"
                         extra={
-                            <Space>
-                                <Button icon={<IconPlus />} theme='borderless' type='primary' onClick={(e) => handleAddTokenConfig(e)} disabled={!tokenValid}>
+                            <Space className="btn-group">
+                                <Button icon={<IconPlus />} theme='borderless' type='primary' onClick={(e) => handleAddTokenConfig(e)} disabled={!tokenValid} className="btn-ghost">
                                     添加到配置
                                 </Button>
-                                <Button icon={<IconCopy />} theme='borderless' type='primary' onClick={(e) => copyTokenInfo(e)} disabled={!tokenValid}>
+                                <Button icon={<IconCopy />} theme='borderless' type='primary' onClick={(e) => copyTokenInfo(e)} disabled={!tokenValid} className="btn-ghost">
                                     复制令牌信息
                                 </Button>
                             </Space>
@@ -689,7 +697,7 @@ const KeyUsage = () => {
                         extra={
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <Tag color='green' style={{ marginRight: 5 }}>计算汇率：$1 = 50 0000 tokens</Tag>
-                                <Button icon={<IconDownload />} theme='borderless' type='primary' onClick={(e) => exportCSV(e)} disabled={!tokenValid || logs.length === 0}>
+                                <Button icon={<IconDownload />} theme='borderless' type='primary' onClick={(e) => exportCSV(e)} disabled={!tokenValid || logs.length === 0} className="btn-ghost">
                                     导出为CSV文件
                                 </Button>
                             </div>
@@ -704,6 +712,7 @@ const KeyUsage = () => {
                                     pageSize: ITEMS_PER_PAGE,
                                     hideOnSinglePage: true,
                                 }}
+                                className="table-row-hover"
                             />
                         </Spin>
                     </Panel>

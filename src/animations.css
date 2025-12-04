@@ -1,0 +1,538 @@
+/* ========================================
+   高级动画样式系统
+   ======================================== */
+
+/* ---- 全局动画变量 ---- */
+:root {
+    --animation-duration-fast: 0.2s;
+    --animation-duration-normal: 0.3s;
+    --animation-duration-slow: 0.45s;
+    --animation-easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --animation-easing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --animation-easing-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    --color-primary: #1890ff;
+    --color-primary-light: rgba(24, 144, 255, 0.08);
+    --color-primary-glow: rgba(24, 144, 255, 0.15);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+    --shadow-primary: 0 8px 20px rgba(24, 144, 255, 0.18);
+}
+
+/* ---- Keyframes 动画定义 ---- */
+
+/* 淡入上移 */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 淡入缩放 */
+@keyframes fadeScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 滑动进入 */
+@keyframes slideIn {
+    from {
+        width: 0;
+        opacity: 0;
+    }
+    to {
+        width: 100%;
+        opacity: 1;
+    }
+}
+
+/* 脉冲效果 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* 微光扫过 */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* 弹跳进入 */
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    70% {
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 旋转淡入 */
+@keyframes rotateIn {
+    from {
+        opacity: 0;
+        transform: rotate(-10deg) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: rotate(0) scale(1);
+    }
+}
+
+/* 霓虹呼吸 */
+@keyframes neonGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px var(--color-primary-glow),
+                    0 0 10px var(--color-primary-glow),
+                    0 0 15px var(--color-primary-glow);
+    }
+    50% {
+        box-shadow: 0 0 10px var(--color-primary-glow),
+                    0 0 20px var(--color-primary-glow),
+                    0 0 30px var(--color-primary-glow);
+    }
+}
+
+/* 波纹扩散 */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* ---- 页面级动画 ---- */
+
+/* 页面淡入 */
+.page-fade-in {
+    animation: fadeUp var(--animation-duration-slow) var(--animation-easing-smooth);
+}
+
+/* 节区淡入 */
+.section-fade {
+    animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+/* ---- 卡片动画 ---- */
+
+/* 基础卡片悬浮 */
+.card-elevate {
+    transition: transform var(--animation-duration-normal) var(--animation-easing-smooth),
+                box-shadow var(--animation-duration-normal) var(--animation-easing-smooth),
+                border-color var(--animation-duration-normal) var(--animation-easing-smooth);
+    will-change: transform, box-shadow;
+}
+
+.card-elevate:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary) !important;
+}
+
+/* 高级卡片悬浮（带微光） */
+.card-elevate-premium {
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--animation-duration-normal) var(--animation-easing-smooth),
+                box-shadow var(--animation-duration-normal) var(--animation-easing-smooth),
+                border-color var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.card-elevate-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    transition: left 0.5s;
+}
+
+.card-elevate-premium:hover::before {
+    left: 100%;
+}
+
+.card-elevate-premium:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: var(--shadow-lg),
+                0 0 0 1px var(--color-primary-glow);
+}
+
+/* 拖拽中的卡片 */
+.card-dragging {
+    transform: rotate(3deg) scale(1.05);
+    box-shadow: var(--shadow-lg);
+    opacity: 0.9;
+    cursor: grabbing !important;
+}
+
+/* ---- 按钮动画 ---- */
+
+/* 幽灵按钮效果 */
+.btn-ghost {
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--animation-duration-fast) var(--animation-easing-smooth),
+                box-shadow var(--animation-duration-normal) var(--animation-easing-smooth),
+                background var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.btn-ghost::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: var(--color-primary-light);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn-ghost:hover:not(:disabled)::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-ghost:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: var(--shadow-primary);
+}
+
+.btn-ghost:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 强调按钮效果 */
+.btn-strong {
+    position: relative;
+    transition: transform var(--animation-duration-fast) var(--animation-easing-smooth),
+                box-shadow var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.btn-strong:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-primary);
+    animation: pulse 1.5s infinite;
+}
+
+.btn-strong:active:not(:disabled) {
+    animation: none;
+}
+
+/* 按钮组统一动画 */
+.btn-group > .semi-button {
+    transition: all var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+.btn-group > .semi-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    z-index: 1;
+}
+
+/* ---- 输入框动画 ---- */
+
+/* 输入框聚焦 */
+.input-focus {
+    transition: box-shadow var(--animation-duration-normal) var(--animation-easing-smooth),
+                border-color var(--animation-duration-normal) var(--animation-easing-smooth),
+                transform var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+.input-focus:focus-within {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px var(--color-primary-glow) !important;
+}
+
+/* 高级输入框（带呼吸灯效果） */
+.input-focus-premium {
+    position: relative;
+    transition: all var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.input-focus-premium:focus-within {
+    transform: translateY(-1px);
+    animation: neonGlow 2s ease-in-out infinite;
+}
+
+/* ---- 表格动画 ---- */
+
+/* 表格行悬停 */
+.table-row-hover .semi-table-row {
+    position: relative;
+    transition: background var(--animation-duration-fast) var(--animation-easing-smooth),
+                transform var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+.table-row-hover .semi-table-row::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--color-primary);
+    transform: scaleY(0);
+    transition: transform var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+.table-row-hover .semi-table-row:hover {
+    background: linear-gradient(
+        90deg,
+        var(--color-primary-light),
+        transparent
+    ) !important;
+    transform: translateX(3px);
+}
+
+.table-row-hover .semi-table-row:hover::before {
+    transform: scaleY(1);
+}
+
+/* 表格单元格内容动画 */
+.table-row-hover .semi-table-row:hover .semi-tag {
+    transform: scale(1.05);
+    transition: transform var(--animation-duration-fast) var(--animation-easing-elastic);
+}
+
+/* ---- Tab 动画 ---- */
+
+/* Tab 下划线动画 */
+.tab-animated .semi-tabs-tab {
+    position: relative;
+    transition: color var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+.tab-animated .semi-tabs-tab-active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 3px;
+    width: 100%;
+    background: linear-gradient(90deg, var(--color-primary), #6f9bff);
+    border-radius: 2px 2px 0 0;
+    animation: slideIn var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.tab-animated .semi-tabs-tab:hover:not(.semi-tabs-tab-active) {
+    color: var(--color-primary);
+    transform: translateY(-2px);
+    transition: all var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+/* ---- Collapse 动画 ---- */
+
+/* 折叠面板展开动画 */
+.collapse-animated .semi-collapse-panel {
+    transition: all var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.collapse-animated .semi-collapse-content {
+    animation: fadeUp var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+/* ---- Modal 动画 ---- */
+
+/* Modal 弹出动画 */
+.modal-pop .semi-modal {
+    animation: bounceIn 0.4s var(--animation-easing-bounce);
+}
+
+.modal-pop .semi-modal-content {
+    animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+/* ---- Tag 动画 ---- */
+
+/* Tag 交互动画 */
+.tag-interactive {
+    cursor: pointer;
+    transition: all var(--animation-duration-fast) var(--animation-easing-smooth);
+}
+
+.tag-interactive:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: var(--shadow-sm);
+}
+
+.tag-interactive:active {
+    transform: translateY(0) scale(1);
+}
+
+/* ---- Icon 动画 ---- */
+
+/* 图标旋转 */
+.icon-rotate {
+    transition: transform var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+.icon-rotate:hover {
+    transform: rotate(180deg);
+}
+
+/* 图标弹跳 */
+.icon-bounce:hover {
+    animation: pulse 0.6s ease-in-out;
+}
+
+/* ---- 加载动画 ---- */
+
+/* 骨架屏淡入 */
+.skeleton-fade {
+    animation: fadeScale var(--animation-duration-slow) var(--animation-easing-smooth);
+}
+
+/* Loading 模糊效果 */
+.loading-blur {
+    filter: blur(2px);
+    pointer-events: none;
+    transition: filter var(--animation-duration-normal) var(--animation-easing-smooth);
+}
+
+/* ---- 特殊效果 ---- */
+
+/* 渐变文字 */
+.text-gradient {
+    background: linear-gradient(120deg, var(--color-primary), #6f9bff, var(--color-primary));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+}
+
+/* 发光文字 */
+.text-glow {
+    color: var(--color-primary);
+    text-shadow: 0 0 10px var(--color-primary-glow);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* 微光效果 */
+.shimmer-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer-effect::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    animation: shimmer 2s infinite;
+}
+
+/* ---- 响应式调整 ---- */
+
+/* 减少动画复杂度（低性能设备） */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* 移动端优化 */
+@media only screen and (max-width: 768px) {
+    .card-elevate:hover,
+    .card-elevate-premium:hover {
+        transform: translateY(-3px);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+        transform: translateY(-1px) scale(1.01);
+    }
+}
+
+/* ---- 工具类 ---- */
+
+/* 禁用动画 */
+.no-animation,
+.no-animation *,
+.no-animation *::before,
+.no-animation *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* 延迟动画 */
+.delay-100 {
+    animation-delay: 0.1s;
+}
+
+.delay-200 {
+    animation-delay: 0.2s;
+}
+
+.delay-300 {
+    animation-delay: 0.3s;
+}
+
+/* 动画持续时间 */
+.duration-fast {
+    animation-duration: var(--animation-duration-fast);
+}
+
+.duration-normal {
+    animation-duration: var(--animation-duration-normal);
+}
+
+.duration-slow {
+    animation-duration: var(--animation-duration-slow);
+}

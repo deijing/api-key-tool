@@ -27,6 +27,7 @@ const HeaderBar = () => {
         justifyContent: 'space-between',
         height: '100%',
       }}
+      className="section-fade"
     >
       <Nav
         mode='horizontal'
@@ -34,7 +35,7 @@ const HeaderBar = () => {
           {
             text: '令牌查询',
             logo: (
-              <div style={{ width: '100%', height: '100%' }}>
+              <div style={{ width: '100%', height: '100%' }} className="icon-bounce">
                 <IconTag size='large' />
               </div>
             )
@@ -42,10 +43,11 @@ const HeaderBar = () => {
         }
       />
       <Button
-        icon={<IconSetting />}
+        icon={<IconSetting className="icon-rotate" />}
         theme='borderless'
         onClick={handleSettingsClick}
         style={{ marginRight: 16 }}
+        className="btn-ghost"
       >
         设置
       </Button>

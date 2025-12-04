@@ -34,15 +34,18 @@ const SettingsPanel = ({ visible, onClose, onConfigChange }) => {
             onCancel={onClose}
             footer={
                 <div style={{ textAlign: 'right' }}>
-                    <Button onClick={onClose} style={{ marginRight: 8 }}>
-                        取消
-                    </Button>
-                    <Button onClick={handleSave} type="primary">
-                        保存
-                    </Button>
+                    <Space className="btn-group">
+                        <Button onClick={onClose} style={{ marginRight: 8 }} className="btn-ghost">
+                            取消
+                        </Button>
+                        <Button onClick={handleSave} type="primary" className="btn-strong">
+                            保存
+                        </Button>
+                    </Space>
                 </div>
             }
             width={500}
+            className="modal-pop"
         >
             <div style={{ padding: '16px 0' }}>
                 <Title heading={6} style={{ marginBottom: 16 }}>

@@ -8,6 +8,7 @@ import HeaderBar from './components/HeaderBar';
 import reportWebVitals from './reportWebVitals';
 import 'semantic-ui-css/semantic.min.css';
 import './index.css';
+import './animations.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 const { Content, Header } = Layout;

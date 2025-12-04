@@ -571,6 +571,7 @@ const TokenConfigManager = () => {
         return (
             <Card
                 key={token.id}
+                className={dragProps.isDragging ? 'card-dragging' : 'card-elevate'}
                 style={{
                     marginBottom: 12,
                     border: dragProps.isDragging ? '2px solid #1890ff' : '1px solid #e8e8e8',
@@ -652,7 +653,7 @@ const TokenConfigManager = () => {
                         </div>
 
                         {/* 右侧按钮区 */}
-                        <Space spacing={4}>
+                        <Space spacing={4} className="btn-group">
                             {hasApiKey && (
                                 <>
                                     <Button
@@ -664,6 +665,7 @@ const TokenConfigManager = () => {
                                             fetchTokenInfo(token);
                                         }}
                                         size="small"
+                                        className="btn-strong"
                                     >
                                         查询
                                     </Button>
@@ -676,6 +678,7 @@ const TokenConfigManager = () => {
                                             handleViewDetail(token);
                                         }}
                                         size="small"
+                                        className="btn-ghost"
                                     >
                                         详情
                                     </Button>
@@ -690,6 +693,7 @@ const TokenConfigManager = () => {
                                 }}
                                 size="small"
                                 title="复制配置"
+                                className="btn-ghost"
                             />
                             <Button
                                 theme="borderless"
@@ -699,6 +703,7 @@ const TokenConfigManager = () => {
                                     handleEdit(token);
                                 }}
                                 size="small"
+                                className="btn-ghost"
                             />
                             <Button
                                 theme="borderless"
@@ -710,6 +715,7 @@ const TokenConfigManager = () => {
                                 }}
                                 size="small"
                                 disabled={tokenConfigs.length === 1}
+                                className="btn-ghost"
                             />
                         </Space>
                     </div>
@@ -745,11 +751,12 @@ const TokenConfigManager = () => {
                 </Space>
 
                 {/* 右侧：操作按钮组 */}
-                <Space>
+                <Space className="btn-group">
                     <Button
                         icon={<IconUpload />}
                         onClick={handleImport}
                         size="default"
+                        className="btn-ghost"
                     >
                         导入
                     </Button>
@@ -758,6 +765,7 @@ const TokenConfigManager = () => {
                         onClick={handleExport}
                         size="default"
                         disabled={tokenConfigs.length === 0}
+                        className="btn-ghost"
                     >
                         导出
                     </Button>
@@ -766,6 +774,7 @@ const TokenConfigManager = () => {
                         onClick={handleAdd}
                         type="primary"
                         size="default"
+                        className="btn-strong"
                     >
                         添加令牌
                     </Button>
@@ -804,6 +813,7 @@ const TokenConfigManager = () => {
                 title={editingToken ? '编辑令牌' : '添加令牌'}
                 visible={formVisible}
                 onCancel={() => setFormVisible(false)}
+                className="modal-pop"
                 onOk={handleSave}
                 okText="保存"
                 cancelText="取消"
@@ -912,6 +922,7 @@ const TokenConfigManager = () => {
                 title={`令牌详情 - ${detailToken?.name || ''}`}
                 visible={detailVisible}
                 onCancel={() => setDetailVisible(false)}
+                className="modal-pop"
                 footer={null}
                 width={900}
             >
@@ -971,6 +982,7 @@ const TokenConfigManager = () => {
                             <Spin spinning={detailLoading}>
                                 {detailLogs.length > 0 ? (
                                     <Table
+                                        className="table-row-hover"
                                         columns={[
                                             {
                                                 title: '时间',

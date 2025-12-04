@@ -502,6 +502,7 @@ const ApiConfigManager = () => {
         return (
             <Card
                 key={api.id}
+                className={dragProps.isDragging ? 'card-dragging' : 'card-elevate'}
                 style={{
                     marginBottom: 12,
                     border: dragProps.isDragging ? '2px solid #1890ff' : '1px solid #e8e8e8',
@@ -583,7 +584,7 @@ const ApiConfigManager = () => {
                         </div>
 
                         {/* 右侧按钮区 */}
-                        <Space spacing={4}>
+                        <Space spacing={4} className="btn-group">
                             {hasCredentials && (
                                 <Button
                                     theme="light"
@@ -594,6 +595,7 @@ const ApiConfigManager = () => {
                                         fetchQuota(api);
                                     }}
                                     size="small"
+                                    className="btn-strong"
                                 >
                                     查询
                                 </Button>
@@ -607,6 +609,7 @@ const ApiConfigManager = () => {
                                 }}
                                 size="small"
                                 title="复制配置"
+                                className="btn-ghost"
                             />
                             <Button
                                 theme="borderless"
@@ -616,6 +619,7 @@ const ApiConfigManager = () => {
                                     handleEditApi(api);
                                 }}
                                 size="small"
+                                className="btn-ghost"
                             />
                             <Button
                                 theme="borderless"
@@ -627,6 +631,7 @@ const ApiConfigManager = () => {
                                 }}
                                 size="small"
                                 disabled={apiConfigs.length === 1}
+                                className="btn-ghost"
                             />
                         </Space>
                     </div>
@@ -664,11 +669,12 @@ const ApiConfigManager = () => {
                 </Space>
 
                 {/* 右侧：操作按钮组 */}
-                <Space>
+                <Space className="btn-group">
                     <Button
                         icon={<IconUpload />}
                         onClick={handleImport}
                         size="default"
+                        className="btn-ghost"
                     >
                         导入
                     </Button>
@@ -677,6 +683,7 @@ const ApiConfigManager = () => {
                         onClick={handleExport}
                         size="default"
                         disabled={apiConfigs.length === 0}
+                        className="btn-ghost"
                     >
                         导出
                     </Button>
@@ -685,6 +692,7 @@ const ApiConfigManager = () => {
                         onClick={handleAddApi}
                         type="primary"
                         size="default"
+                        className="btn-strong"
                     >
                         添加 API
                     </Button>
@@ -727,6 +735,7 @@ const ApiConfigManager = () => {
                 okText="保存"
                 cancelText="取消"
                 width={520}
+                className="modal-pop"
             >
                 <Form
                     getFormApi={(api) => setApiFormApi(api)}

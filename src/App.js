@@ -4,7 +4,7 @@ import './App.css';
 
 function App() {
     return (
-        <div className="App-body">
+        <div className="App-body page-fade-in">
             <Log />
         </div>
     );
