@@ -82,14 +82,15 @@ const TokenConfigManager = () => {
                 formApi.setValues({
                     name: editingToken.name,
                     baseUrl: editingToken.baseUrl,
-                    apiKey: editingToken.apiKey || ''
+                    apiKey: editingToken.apiKey || '',
+                    website: editingToken.website || ''
                 });
             } else if (presetTokenValues) {
                 // 复制配置：预填部分值
                 formApi.setValues(presetTokenValues);
             } else {
                 // 新建配置：空表单
-                formApi.setValues({ name: '', baseUrl: '', apiKey: '' });
+                formApi.setValues({ name: '', baseUrl: '', apiKey: '', website: '' });
             }
         }
     }, [formVisible, editingToken, presetTokenValues, formApi]);
@@ -306,7 +307,8 @@ const TokenConfigManager = () => {
         setPresetTokenValues({
             name: `${token.name} (副本)`,
             baseUrl: token.baseUrl,
-            apiKey: ''
+            apiKey: '',
+            website: token.website || ''
         });
         setFormVisible(true);
         Toast.info('请填写新的API Key');
@@ -320,13 +322,14 @@ const TokenConfigManager = () => {
         }
 
         formApi.validate().then((values) => {
-            const { name, baseUrl, apiKey } = values;
+            const { name, baseUrl, apiKey, website } = values;
 
             if (editingToken) {
                 const success = updateTokenConfig(editingToken.id, {
                     name,
                     baseUrl,
-                    apiKey: apiKey || ''
+                    apiKey: apiKey || '',
+                    website: website || ''
                 });
                 if (success) {
                     Toast.success('令牌配置已更新');
@@ -336,7 +339,7 @@ const TokenConfigManager = () => {
                     Toast.error('更新失败');
                 }
             } else {
-                const newToken = addTokenConfig(name, baseUrl, apiKey || '');
+                const newToken = addTokenConfig(name, baseUrl, apiKey || '', website || '');
                 if (newToken) {
                     Toast.success('令牌配置已添加');
                     loadConfigs();
@@ -376,10 +379,11 @@ const TokenConfigManager = () => {
         }
 
         // 导出时移除敏感信息（id、lastUsedAt），只保留核心配置
-        const exportData = configs.map(({ name, baseUrl, apiKey }) => ({
+        const exportData = configs.map(({ name, baseUrl, apiKey, website }) => ({
             name,
             baseUrl,
-            apiKey
+            apiKey,
+            website
         }));
 
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -419,13 +423,14 @@ const TokenConfigManager = () => {
                     let failCount = 0;
 
                     importData.forEach((config) => {
-                        const { name, baseUrl, apiKey } = config;
+                        const { name, baseUrl, apiKey, website } = config;
                         if (!name || !baseUrl) {
                             failCount++;
                             return;
                         }
 
-                        const result = addTokenConfig(name, baseUrl, apiKey || '');
+                        // addTokenConfig 内部已包含验证和规范化逻辑
+                        const result = addTokenConfig(name, baseUrl, apiKey || '', website || '');
                         if (result) {
                             successCount++;
                         } else {
@@ -570,7 +575,18 @@ const TokenConfigManager = () => {
                                 {/* 名称 */}
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
                                     <Title heading={6} style={{ margin: 0, fontSize: 15 }}>
-                                        {token.name}
+                                        {token.website ? (
+                                            <a
+                                                href={token.website}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="api-name-link"
+                                            >
+                                                {token.name}
+                                            </a>
+                                        ) : (
+                                            token.name
+                                        )}
                                     </Title>
                                 </div>
 
@@ -769,9 +785,10 @@ const TokenConfigManager = () => {
                             ? {
                                 name: editingToken.name,
                                 baseUrl: editingToken.baseUrl,
-                                apiKey: editingToken.apiKey || ''
+                                apiKey: editingToken.apiKey || '',
+                                website: editingToken.website || ''
                               }
-                            : presetTokenValues || { name: '', baseUrl: '', apiKey: '' }
+                            : presetTokenValues || { name: '', baseUrl: '', apiKey: '', website: '' }
                     }
                 >
                     <Form.Input
@@ -809,6 +826,31 @@ const TokenConfigManager = () => {
                             }
                         ]}
                         extraText="必须使用 HTTPS 协议,结尾不要带 /"
+                        style={{ marginBottom: 12 }}
+                    />
+                    <Form.Input
+                        field="website"
+                        label="网站链接"
+                        placeholder="可选，例如：https://openai.com"
+                        rules={[
+                            {
+                                validator: (rule, value) => {
+                                    if (!value) return true;
+                                    const trimmed = value.trim();
+                                    if (!trimmed) return true;
+                                    if (!/^https?:\/\//i.test(trimmed)) {
+                                        return '请以 http:// 或 https:// 开头';
+                                    }
+                                    try {
+                                        new URL(trimmed);
+                                        return true;
+                                    } catch (e) {
+                                        return '请输入合法网址';
+                                    }
+                                }
+                            }
+                        ]}
+                        extraText="用于卡片标题点击跳转，可留空"
                         style={{ marginBottom: 12 }}
                     />
                     <Form.Input

@@ -284,12 +284,44 @@ export function getAllApiConfigs() {
       isActive: true,
       createdAt: Date.now(),
       lastUsedAt: Date.now(),
+      website: '',
     };
     return [defaultConfig];
   }
   try {
     const configs = JSON.parse(configsJson);
-    return configs;
+    // 规范化和清洗旧数据
+    const cleanedConfigs = configs.map(c => {
+      // 清洗 baseUrl
+      let cleanedBaseUrl = c.baseUrl || '';
+      const normalizedBaseUrl = validateAndNormalizeBaseUrl(cleanedBaseUrl);
+      if (!normalizedBaseUrl && cleanedBaseUrl) {
+        console.warn('[utils] 清洗无效的 baseUrl:', cleanedBaseUrl);
+      }
+
+      // 清洗 website
+      const cleanedWebsite = validateAndNormalizeWebsite(c.website || '');
+      if (c.website && !cleanedWebsite) {
+        console.warn('[utils] 清洗无效的 website:', c.website);
+      }
+
+      return {
+        ...c,
+        baseUrl: normalizedBaseUrl || cleanedBaseUrl, // 如果验证失败，保留原值以便用户修复
+        website: cleanedWebsite
+      };
+    });
+
+    // 如果有数据被清洗，更新存储
+    const needsUpdate = cleanedConfigs.some((c, i) =>
+      c.baseUrl !== configs[i].baseUrl || c.website !== configs[i].website
+    );
+    if (needsUpdate) {
+      console.log('[utils] 检测到旧数据，已自动清洗并更新');
+      saveAllApiConfigs(cleanedConfigs);
+    }
+
+    return cleanedConfigs;
   } catch (e) {
     console.error('[utils] 解析 API 配置失败:', e);
     return [];
@@ -320,17 +352,26 @@ export function getActiveApiConfig() {
 }
 
 // 添加新的 API 配置
-export function addApiConfig(name, baseUrl, accessToken = '', userId = '') {
+export function addApiConfig(name, baseUrl, accessToken = '', userId = '', website = '') {
   const configs = getAllApiConfigs();
+
+  // 验证并规范化 baseUrl 和 website
+  const normalizedBaseUrl = validateAndNormalizeBaseUrl(baseUrl);
+  if (!normalizedBaseUrl) {
+    console.error('[utils] Invalid baseUrl:', baseUrl);
+    return null;
+  }
+
   const newConfig = {
     id: generateId(),
     name: name.trim(),
-    baseUrl: baseUrl.trim(),
+    baseUrl: normalizedBaseUrl,
     accessToken: accessToken.trim(),
     userId: userId.trim(),
     isActive: false,
     createdAt: Date.now(),
     lastUsedAt: null,
+    website: validateAndNormalizeWebsite(website),
   };
   configs.push(newConfig);
   saveAllApiConfigs(configs);
@@ -343,9 +384,26 @@ export function updateApiConfig(id, updates) {
   const index = configs.findIndex(c => c.id === id);
   if (index === -1) return false;
 
+  const normalizedUpdates = { ...updates };
+
+  // 验证并规范化 baseUrl（如果提供）
+  if (updates.baseUrl !== undefined) {
+    const normalizedBaseUrl = validateAndNormalizeBaseUrl(updates.baseUrl);
+    if (!normalizedBaseUrl) {
+      console.error('[utils] Invalid baseUrl in update:', updates.baseUrl);
+      return false;
+    }
+    normalizedUpdates.baseUrl = normalizedBaseUrl;
+  }
+
+  // 验证并规范化 website（如果提供）
+  if (updates.website !== undefined) {
+    normalizedUpdates.website = validateAndNormalizeWebsite(updates.website);
+  }
+
   configs[index] = {
     ...configs[index],
-    ...updates,
+    ...normalizedUpdates,
   };
   saveAllApiConfigs(configs);
   return true;
@@ -396,6 +454,55 @@ export function reorderApiConfigs(orderedConfigs) {
   return true;
 }
 
+// ==================== 验证辅助函数 ====================
+
+// 验证并规范化 website URL
+function validateAndNormalizeWebsite(website) {
+  if (!website) return '';
+  const trimmed = website.trim();
+  if (!trimmed) return '';
+
+  // 只允许 http 和 https 协议
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return '';
+  }
+
+  try {
+    new URL(trimmed);
+    return trimmed;
+  } catch (e) {
+    return '';
+  }
+}
+
+// 验证并规范化 baseUrl
+function validateAndNormalizeBaseUrl(baseUrl) {
+  if (!baseUrl) return '';
+  const trimmed = baseUrl.trim();
+  if (!trimmed) return '';
+
+  // 移除尾部斜杠
+  let normalized = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+
+  // 强制使用 HTTPS
+  if (!normalized.startsWith('https://')) {
+    // 如果是 http，自动转换为 https
+    if (normalized.startsWith('http://')) {
+      normalized = 'https://' + normalized.slice(7);
+    } else if (!normalized.startsWith('https://')) {
+      return ''; // 无效的 URL
+    }
+  }
+
+  // 验证是否为有效 URL
+  try {
+    new URL(normalized);
+    return normalized;
+  } catch (e) {
+    return '';
+  }
+}
+
 // ==================== 令牌配置管理 ====================
 const TOKEN_CONFIG_KEYS = {
   TOKEN_CONFIGS: 'app_token_configs',
@@ -412,7 +519,38 @@ export function getAllTokenConfigs() {
   }
   try {
     const configs = JSON.parse(configsJson);
-    return configs;
+    // 规范化和清洗旧数据
+    const cleanedConfigs = configs.map(c => {
+      // 清洗 baseUrl
+      let cleanedBaseUrl = c.baseUrl || '';
+      const normalizedBaseUrl = validateAndNormalizeBaseUrl(cleanedBaseUrl);
+      if (!normalizedBaseUrl && cleanedBaseUrl) {
+        console.warn('[utils] 清洗无效的 baseUrl:', cleanedBaseUrl);
+      }
+
+      // 清洗 website
+      const cleanedWebsite = validateAndNormalizeWebsite(c.website || '');
+      if (c.website && !cleanedWebsite) {
+        console.warn('[utils] 清洗无效的 website:', c.website);
+      }
+
+      return {
+        ...c,
+        baseUrl: normalizedBaseUrl || cleanedBaseUrl, // 如果验证失败，保留原值以便用户修复
+        website: cleanedWebsite
+      };
+    });
+
+    // 如果有数据被清洗，更新存储
+    const needsUpdate = cleanedConfigs.some((c, i) =>
+      c.baseUrl !== configs[i].baseUrl || c.website !== configs[i].website
+    );
+    if (needsUpdate) {
+      console.log('[utils] 检测到旧数据，已自动清洗并更新');
+      saveAllTokenConfigs(cleanedConfigs);
+    }
+
+    return cleanedConfigs;
   } catch (e) {
     console.error('[utils] 解析令牌配置失败:', e);
     return [];
@@ -441,16 +579,25 @@ export function getActiveTokenConfig() {
 }
 
 // 添加新的令牌配置
-export function addTokenConfig(name, baseUrl, apiKey) {
+export function addTokenConfig(name, baseUrl, apiKey, website = '') {
   const configs = getAllTokenConfigs();
+
+  // 验证并规范化 baseUrl 和 website
+  const normalizedBaseUrl = validateAndNormalizeBaseUrl(baseUrl);
+  if (!normalizedBaseUrl) {
+    console.error('[utils] Invalid baseUrl:', baseUrl);
+    return null;
+  }
+
   const newConfig = {
     id: generateId(),
     name: name.trim(),
-    baseUrl: baseUrl.trim(),
+    baseUrl: normalizedBaseUrl,
     apiKey: apiKey.trim(),
     isActive: configs.length === 0, // 如果是第一个，自动激活
     createdAt: Date.now(),
     lastUsedAt: null,
+    website: validateAndNormalizeWebsite(website),
   };
   configs.push(newConfig);
   saveAllTokenConfigs(configs);
@@ -469,9 +616,26 @@ export function updateTokenConfig(id, updates) {
   const index = configs.findIndex(c => c.id === id);
   if (index === -1) return false;
 
+  const normalizedUpdates = { ...updates };
+
+  // 验证并规范化 baseUrl（如果提供）
+  if (updates.baseUrl !== undefined) {
+    const normalizedBaseUrl = validateAndNormalizeBaseUrl(updates.baseUrl);
+    if (!normalizedBaseUrl) {
+      console.error('[utils] Invalid baseUrl in update:', updates.baseUrl);
+      return false;
+    }
+    normalizedUpdates.baseUrl = normalizedBaseUrl;
+  }
+
+  // 验证并规范化 website（如果提供）
+  if (updates.website !== undefined) {
+    normalizedUpdates.website = validateAndNormalizeWebsite(updates.website);
+  }
+
   configs[index] = {
     ...configs[index],
-    ...updates,
+    ...normalizedUpdates,
   };
   saveAllTokenConfigs(configs);
   return true;

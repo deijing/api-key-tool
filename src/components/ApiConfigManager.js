@@ -73,14 +73,15 @@ const ApiConfigManager = () => {
                     name: editingApi.name,
                     baseUrl: editingApi.baseUrl,
                     accessToken: editingApi.accessToken || '',
-                    userId: editingApi.userId || ''
+                    userId: editingApi.userId || '',
+                    website: editingApi.website || ''
                 });
             } else if (presetApiValues) {
                 // 复制配置：预填部分值
                 apiFormApi.setValues(presetApiValues);
             } else {
                 // 新建配置：空表单
-                apiFormApi.setValues({ name: '', baseUrl: '', accessToken: '', userId: '' });
+                apiFormApi.setValues({ name: '', baseUrl: '', accessToken: '', userId: '', website: '' });
             }
         }
     }, [apiFormVisible, editingApi, presetApiValues, apiFormApi]);
@@ -302,7 +303,8 @@ const ApiConfigManager = () => {
             name: `${api.name} (副本)`,
             baseUrl: api.baseUrl,
             accessToken: '',
-            userId: ''
+            userId: '',
+            website: api.website || ''
         });
         setApiFormVisible(true);
         Toast.info('请填写新的访问令牌和用户ID');
@@ -316,7 +318,7 @@ const ApiConfigManager = () => {
         }
 
         apiFormApi.validate().then((values) => {
-            const { name, baseUrl, accessToken, userId } = values;
+            const { name, baseUrl, accessToken, userId, website } = values;
 
             if (editingApi) {
                 // 编辑现有 API
@@ -324,7 +326,8 @@ const ApiConfigManager = () => {
                     name,
                     baseUrl,
                     accessToken: accessToken || '',
-                    userId: userId || ''
+                    userId: userId || '',
+                    website: website || ''
                 });
                 if (success) {
                     Toast.success('API 配置已更新');
@@ -335,7 +338,7 @@ const ApiConfigManager = () => {
                 }
             } else {
                 // 添加新 API
-                const newApi = addApiConfig(name, baseUrl, accessToken || '', userId || '');
+                const newApi = addApiConfig(name, baseUrl, accessToken || '', userId || '', website || '');
                 if (newApi) {
                     Toast.success('API 配置已添加');
                     loadConfigs();
@@ -375,11 +378,12 @@ const ApiConfigManager = () => {
         }
 
         // 导出时移除敏感信息（id、createdAt、lastUsedAt、isActive），只保留核心配置
-        const exportData = configs.map(({ name, baseUrl, accessToken, userId }) => ({
+        const exportData = configs.map(({ name, baseUrl, accessToken, userId, website }) => ({
             name,
             baseUrl,
             accessToken,
-            userId
+            userId,
+            website
         }));
 
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -419,13 +423,14 @@ const ApiConfigManager = () => {
                     let failCount = 0;
 
                     importData.forEach((config) => {
-                        const { name, baseUrl, accessToken, userId } = config;
+                        const { name, baseUrl, accessToken, userId, website } = config;
                         if (!name || !baseUrl) {
                             failCount++;
                             return;
                         }
 
-                        const result = addApiConfig(name, baseUrl, accessToken || '', userId || '');
+                        // addApiConfig 内部已包含验证和规范化逻辑
+                        const result = addApiConfig(name, baseUrl, accessToken || '', userId || '', website || '');
                         if (result) {
                             successCount++;
                         } else {
@@ -528,7 +533,18 @@ const ApiConfigManager = () => {
                                 {/* 名称 */}
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
                                     <Title heading={6} style={{ margin: 0, fontSize: 15 }}>
-                                        {api.name}
+                                        {api.website ? (
+                                            <a
+                                                href={api.website}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="api-name-link"
+                                            >
+                                                {api.name}
+                                            </a>
+                                        ) : (
+                                            api.name
+                                        )}
                                     </Title>
                                 </div>
 
@@ -721,9 +737,10 @@ const ApiConfigManager = () => {
                                 name: editingApi.name,
                                 baseUrl: editingApi.baseUrl,
                                 accessToken: editingApi.accessToken || '',
-                                userId: editingApi.userId || ''
+                                userId: editingApi.userId || '',
+                                website: editingApi.website || ''
                               }
-                            : presetApiValues || { name: '', baseUrl: '', accessToken: '', userId: '' }
+                            : presetApiValues || { name: '', baseUrl: '', accessToken: '', userId: '', website: '' }
                     }
                 >
                     <Form.Input
@@ -761,6 +778,31 @@ const ApiConfigManager = () => {
                             }
                         ]}
                         extraText="必须使用 HTTPS 协议,结尾不要带 /"
+                        style={{ marginBottom: 12 }}
+                    />
+                    <Form.Input
+                        field="website"
+                        label="网站链接"
+                        placeholder="可选，例如：https://ikuncode.com"
+                        rules={[
+                            {
+                                validator: (rule, value) => {
+                                    if (!value) return true;
+                                    const trimmed = value.trim();
+                                    if (!trimmed) return true;
+                                    if (!/^https?:\/\//i.test(trimmed)) {
+                                        return '请以 http:// 或 https:// 开头';
+                                    }
+                                    try {
+                                        new URL(trimmed);
+                                        return true;
+                                    } catch (e) {
+                                        return '请输入合法网址';
+                                    }
+                                }
+                            }
+                        ]}
+                        extraText="用于卡片标题点击跳转，可留空"
                         style={{ marginBottom: 12 }}
                     />
                     <Form.Input

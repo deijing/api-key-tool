@@ -450,16 +450,18 @@ const KeyUsage = () => {
 
         // 导出时移除敏感信息，只保留核心配置
         const exportData = {
-            apiConfigs: apiConfigs.map(({ name, baseUrl, accessToken, userId }) => ({
+            apiConfigs: apiConfigs.map(({ name, baseUrl, accessToken, userId, website }) => ({
                 name,
                 baseUrl,
                 accessToken,
-                userId
+                userId,
+                website
             })),
-            tokenConfigs: tokenConfigs.map(({ name, baseUrl, apiKey }) => ({
+            tokenConfigs: tokenConfigs.map(({ name, baseUrl, apiKey, website }) => ({
                 name,
                 baseUrl,
-                apiKey
+                apiKey,
+                website
             }))
         };
 
@@ -504,12 +506,14 @@ const KeyUsage = () => {
                     // 导入API配置
                     if (importData.apiConfigs && Array.isArray(importData.apiConfigs)) {
                         importData.apiConfigs.forEach((config) => {
-                            const { name, baseUrl, accessToken, userId } = config;
+                            const { name, baseUrl, accessToken, userId, website } = config;
                             if (!name || !baseUrl) {
                                 apiFailCount++;
                                 return;
                             }
-                            const result = addApiConfig(name, baseUrl, accessToken || '', userId || '');
+
+                            // addApiConfig 内部已包含验证和规范化逻辑
+                            const result = addApiConfig(name, baseUrl, accessToken || '', userId || '', website || '');
                             if (result) {
                                 apiSuccessCount++;
                             } else {
@@ -521,12 +525,14 @@ const KeyUsage = () => {
                     // 导入令牌配置
                     if (importData.tokenConfigs && Array.isArray(importData.tokenConfigs)) {
                         importData.tokenConfigs.forEach((config) => {
-                            const { name, baseUrl, apiKey } = config;
+                            const { name, baseUrl, apiKey, website } = config;
                             if (!name || !baseUrl) {
                                 tokenFailCount++;
                                 return;
                             }
-                            const result = addTokenConfig(name, baseUrl, apiKey || '');
+
+                            // addTokenConfig 内部已包含验证和规范化逻辑
+                            const result = addTokenConfig(name, baseUrl, apiKey || '', website || '');
                             if (result) {
                                 tokenSuccessCount++;
                             } else {
