@@ -243,8 +243,8 @@
 }
 
 .btn-ghost:active:not(:disabled) {
-    transform: translateY(0) scale(0.98);
-    box-shadow: var(--shadow-sm);
+    /* transform: translateY(0) scale(0.98); */
+    /* box-shadow: var(--shadow-sm); */
 }
 
 /* 强调按钮效果 */
@@ -378,18 +378,18 @@
 
 /* ---- Modal 动画 ---- */
 
-/* Modal 弹出动画 - 平滑淡入缩放 */
+/* Modal 弹出动画 - 禁用 */
 .modal-pop .semi-modal {
-    animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth);
+    /* animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth); */
 }
 
 .modal-pop .semi-modal-content {
-    animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth);
+    /* animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth); */
 }
 
 /* ---- Tag 动画 ---- */
 
-/* Tag 交互动画 */
+/* Tag 交互动画 - 禁用点击效果 */
 .tag-interactive {
     cursor: pointer;
     transition: all var(--animation-duration-fast) var(--animation-easing-smooth);
@@ -401,7 +401,7 @@
 }
 
 .tag-interactive:active {
-    transform: translateY(0) scale(1);
+    /* transform: translateY(0) scale(1); */
 }
 
 /* ---- Icon 动画 ---- */
