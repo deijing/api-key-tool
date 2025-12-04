@@ -378,9 +378,9 @@
 
 /* ---- Modal 动画 ---- */
 
-/* Modal 弹出动画 */
+/* Modal 弹出动画 - 平滑淡入缩放 */
 .modal-pop .semi-modal {
-    animation: bounceIn 0.4s var(--animation-easing-bounce);
+    animation: fadeScale var(--animation-duration-normal) var(--animation-easing-smooth);
 }
 
 .modal-pop .semi-modal-content {
