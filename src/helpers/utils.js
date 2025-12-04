@@ -386,6 +386,16 @@ export function setActiveApiConfig(id) {
   return true;
 }
 
+// 重新排序 API 配置（用于拖拽排序功能）
+// 此函数不会改变激活状态，仅更新配置的顺序
+export function reorderApiConfigs(orderedConfigs) {
+  if (!Array.isArray(orderedConfigs) || orderedConfigs.length === 0) {
+    return false;
+  }
+  saveAllApiConfigs(orderedConfigs);
+  return true;
+}
+
 // ==================== 令牌配置管理 ====================
 const TOKEN_CONFIG_KEYS = {
   TOKEN_CONFIGS: 'app_token_configs',
@@ -499,5 +509,15 @@ export function setActiveTokenConfig(id) {
 
   saveAllTokenConfigs(configs);
   localStorage.setItem(TOKEN_CONFIG_KEYS.ACTIVE_TOKEN_ID, id);
+  return true;
+}
+
+// 重新排序令牌配置（用于拖拽排序功能）
+// 此函数不会改变激活状态，仅更新配置的顺序
+export function reorderTokenConfigs(orderedConfigs) {
+  if (!Array.isArray(orderedConfigs) || orderedConfigs.length === 0) {
+    return false;
+  }
+  saveAllTokenConfigs(orderedConfigs);
   return true;
 }

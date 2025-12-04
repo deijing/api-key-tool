@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber, Collapse, Table, Tag } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle } from '@douyinfe/semi-icons';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { API } from '../helpers';
 import {
     getAllTokenConfigs,
     addTokenConfig,
     updateTokenConfig,
-    deleteTokenConfig
+    deleteTokenConfig,
+    reorderTokenConfigs
 } from '../helpers/utils';
 import { timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
@@ -16,6 +20,7 @@ const { Panel } = Collapse;
 
 const TokenConfigManager = () => {
     const [tokenConfigs, setTokenConfigs] = useState([]);
+    const tokenConfigsRef = useRef([]);
     const [queryData, setQueryData] = useState({}); // { tokenId: { balance, usage, accessdate, valid, loading } }
 
     // 详情Modal相关状态
@@ -41,9 +46,32 @@ const TokenConfigManager = () => {
     });
     const timerRef = useRef(null);
 
+    // 使用内容哈希来判断配置是否真正变化（忽略顺序变化）
+    const autoFetchKey = useMemo(
+        () => tokenConfigs
+            .map(token => `${token.id}:${token.baseUrl}:${token.apiKey}`)
+            .sort()
+            .join('|'),
+        [tokenConfigs]
+    );
+
+    // 配置拖拽传感器，触发距离设为 8 像素以避免误触发
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8
+            }
+        })
+    );
+
     useEffect(() => {
         loadConfigs();
     }, []);
+
+    // 同步配置到 ref，供自动查询使用
+    useEffect(() => {
+        tokenConfigsRef.current = tokenConfigs;
+    }, [tokenConfigs]);
 
     // 当编辑对话框打开时，重新设置表单值
     useEffect(() => {
@@ -63,6 +91,32 @@ const TokenConfigManager = () => {
     const loadConfigs = () => {
         const configs = getAllTokenConfigs();
         setTokenConfigs(configs);
+    };
+
+    // 处理拖拽结束事件
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+
+        // 如果没有有效的目标位置，或者位置没有变化，直接返回
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        const oldIndex = tokenConfigs.findIndex(item => item.id === active.id);
+        const newIndex = tokenConfigs.findIndex(item => item.id === over.id);
+
+        if (oldIndex === -1 || newIndex === -1) {
+            return;
+        }
+
+        // 使用 arrayMove 重新排列数组
+        const reorderedConfigs = arrayMove(tokenConfigs, oldIndex, newIndex);
+
+        // 更新状态
+        setTokenConfigs(reorderedConfigs);
+
+        // 持久化到 localStorage
+        reorderTokenConfigs(reorderedConfigs);
     };
 
     // 查询令牌信息
@@ -149,7 +203,7 @@ const TokenConfigManager = () => {
     // 自动查询所有有API Key的令牌
     const autoFetchAllTokens = useCallback(async () => {
         console.log('[TokenConfigManager] 执行自动查询');
-        const validTokens = tokenConfigs.filter(token => token.apiKey);
+        const validTokens = tokenConfigsRef.current.filter(token => token.apiKey);
 
         if (validTokens.length === 0) {
             return;
@@ -172,7 +226,7 @@ const TokenConfigManager = () => {
         } else if (failCount > 0) {
             Toast.error(`查询失败 x${failCount}`);
         }
-    }, [tokenConfigs]);
+    }, []);
 
     // 页面加载时自动查询一次(刷新网页时触发)
     useEffect(() => {
@@ -182,7 +236,7 @@ const TokenConfigManager = () => {
             hasInitialFetchedRef.current = true;
             autoFetchAllTokens();
         }
-    }, [tokenConfigs, autoFetchAllTokens]);
+    }, [tokenConfigs.length, autoFetchAllTokens]);
 
     // 自动查询定时器逻辑
     useEffect(() => {
@@ -205,7 +259,7 @@ const TokenConfigManager = () => {
                 timerRef.current = null;
             }
         };
-    }, [autoRefresh, refreshInterval, tokenConfigs, autoFetchAllTokens]);
+    }, [autoRefresh, refreshInterval, tokenConfigs.length, autoFetchAllTokens, autoFetchKey]);
 
     // 切换自动查询开关
     const handleAutoRefreshChange = (checked) => {
@@ -432,8 +486,33 @@ const TokenConfigManager = () => {
         }
     };
 
+    // 可排序的卡片包装组件
+    const SortableCard = ({ itemId, children }) => {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging
+        } = useSortable({ id: itemId });
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.8 : 1,
+            zIndex: isDragging ? 1000 : 'auto',
+        };
+
+        return (
+            <div ref={setNodeRef} style={style}>
+                {children({ attributes, listeners, isDragging })}
+            </div>
+        );
+    };
+
     // 渲染令牌卡片
-    const renderTokenCard = (token) => {
+    const renderTokenCard = (token, dragProps = {}) => {
         const hasApiKey = !!token.apiKey;
         const data = queryData[token.id];
 
@@ -442,22 +521,38 @@ const TokenConfigManager = () => {
                 key={token.id}
                 style={{
                     marginBottom: 12,
-                    border: '1px solid #e8e8e8',
+                    border: dragProps.isDragging ? '2px solid #1890ff' : '1px solid #e8e8e8',
                     borderRadius: 6,
                     background: 'white',
-                    transition: 'all 0.3s',
+                    transition: dragProps.isDragging ? 'none' : 'all 0.3s',
+                    boxShadow: dragProps.isDragging ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                    cursor: dragProps.isDragging ? 'grabbing' : 'default',
                 }}
                 bodyStyle={{ padding: '12px 16px' }}
             >
                 <Spin spinning={data?.loading || false}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ flex: 1 }}>
-                            {/* 名称 */}
-                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-                                <Title heading={6} style={{ margin: 0, fontSize: 15 }}>
-                                    {token.name}
-                                </Title>
+                        {/* 左侧：拖拽手柄 + 内容区 */}
+                        <div style={{ display: 'flex', flex: 1, alignItems: 'flex-start' }}>
+                            {/* 拖拽手柄 */}
+                            <div
+                                {...dragProps.attributes}
+                                {...dragProps.listeners}
+                                className="drag-handle"
+                                aria-label="拖拽排序"
+                                title="拖动调整顺序"
+                            >
+                                <IconHandle />
                             </div>
+
+                            {/* 内容区 */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                {/* 名称 */}
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                                    <Title heading={6} style={{ margin: 0, fontSize: 15 }}>
+                                        {token.name}
+                                    </Title>
+                                </div>
 
                             {/* URL */}
                             <Text type="tertiary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
@@ -485,6 +580,7 @@ const TokenConfigManager = () => {
                                     </Text>
                                 </div>
                             )}
+                            </div>
                         </div>
 
                         {/* 右侧按钮区 */}
@@ -607,9 +703,22 @@ const TokenConfigManager = () => {
                     style={{ padding: 60 }}
                 />
             ) : (
-                <div>
-                    {tokenConfigs.map(renderTokenCard)}
-                </div>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={tokenConfigs.map(token => token.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {tokenConfigs.map(token => (
+                            <SortableCard key={token.id} itemId={token.id}>
+                                {(dragProps) => renderTokenCard(token, dragProps)}
+                            </SortableCard>
+                        ))}
+                    </SortableContext>
+                </DndContext>
             )}
 
             {/* 添加/编辑对话框 */}

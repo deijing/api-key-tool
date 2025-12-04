@@ -1,18 +1,23 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconUpload, IconDownload } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconUpload, IconDownload, IconHandle } from '@douyinfe/semi-icons';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { API } from '../helpers';
 import {
     getAllApiConfigs,
     addApiConfig,
     updateApiConfig,
-    deleteApiConfig
+    deleteApiConfig,
+    reorderApiConfigs
 } from '../helpers/utils';
 
 const { Text, Title } = Typography;
 
 const ApiConfigManager = () => {
     const [apiConfigs, setApiConfigs] = useState([]);
+    const apiConfigsRef = useRef([]);
     const [quotaData, setQuotaData] = useState({}); // { apiId: { planName, remaining, used, total, loading } }
 
     // 添加/编辑对话框
@@ -31,9 +36,32 @@ const ApiConfigManager = () => {
     });
     const timerRef = useRef(null);
 
+    // 使用内容哈希来判断配置是否真正变化（忽略顺序变化）
+    const autoFetchKey = useMemo(
+        () => apiConfigs
+            .map(api => `${api.id}:${api.baseUrl}:${api.accessToken}:${api.userId}`)
+            .sort()
+            .join('|'),
+        [apiConfigs]
+    );
+
+    // 配置拖拽传感器，触发距离设为 8 像素以避免误触发
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8
+            }
+        })
+    );
+
     useEffect(() => {
         loadConfigs();
     }, []);
+
+    // 同步配置到 ref，供自动查询使用
+    useEffect(() => {
+        apiConfigsRef.current = apiConfigs;
+    }, [apiConfigs]);
 
     // 当编辑对话框打开时，重新设置表单值
     useEffect(() => {
@@ -54,6 +82,32 @@ const ApiConfigManager = () => {
     const loadConfigs = () => {
         const configs = getAllApiConfigs();
         setApiConfigs(configs);
+    };
+
+    // 处理拖拽结束事件
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+
+        // 如果没有有效的目标位置，或者位置没有变化，直接返回
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        const oldIndex = apiConfigs.findIndex(item => item.id === active.id);
+        const newIndex = apiConfigs.findIndex(item => item.id === over.id);
+
+        if (oldIndex === -1 || newIndex === -1) {
+            return;
+        }
+
+        // 使用 arrayMove 重新排列数组
+        const reorderedConfigs = arrayMove(apiConfigs, oldIndex, newIndex);
+
+        // 更新状态
+        setApiConfigs(reorderedConfigs);
+
+        // 持久化到 localStorage
+        reorderApiConfigs(reorderedConfigs);
     };
 
     // 查询 API 额度
@@ -139,7 +193,7 @@ const ApiConfigManager = () => {
     // 自动查询所有有凭证的API
     const autoFetchAllQuotas = useCallback(async () => {
         console.log('[ApiConfigManager] 执行自动查询');
-        const validApis = apiConfigs.filter(api => api.accessToken && api.userId);
+        const validApis = apiConfigsRef.current.filter(api => api.accessToken && api.userId);
 
         if (validApis.length === 0) {
             return;
@@ -162,7 +216,7 @@ const ApiConfigManager = () => {
         } else if (failCount > 0) {
             Toast.error(`查询失败 x${failCount}`);
         }
-    }, [apiConfigs]);
+    }, []);
 
     // 页面加载时自动查询一次(刷新网页时触发)
     useEffect(() => {
@@ -172,7 +226,7 @@ const ApiConfigManager = () => {
             hasInitialFetchedRef.current = true;
             autoFetchAllQuotas();
         }
-    }, [apiConfigs, autoFetchAllQuotas]);
+    }, [apiConfigs.length, autoFetchAllQuotas]);
 
     // 自动查询定时器逻辑
     useEffect(() => {
@@ -200,7 +254,7 @@ const ApiConfigManager = () => {
                 timerRef.current = null;
             }
         };
-    }, [autoRefresh, refreshInterval, apiConfigs, autoFetchAllQuotas]);
+    }, [autoRefresh, refreshInterval, apiConfigs.length, autoFetchAllQuotas, autoFetchKey]);
 
     // 切换自动查询开关
     const handleAutoRefreshChange = (checked) => {
@@ -377,8 +431,33 @@ const ApiConfigManager = () => {
         input.click();
     };
 
+    // 可排序的卡片包装组件
+    const SortableCard = ({ itemId, children }) => {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging
+        } = useSortable({ id: itemId });
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.8 : 1,
+            zIndex: isDragging ? 1000 : 'auto',
+        };
+
+        return (
+            <div ref={setNodeRef} style={style}>
+                {children({ attributes, listeners, isDragging })}
+            </div>
+        );
+    };
+
     // 渲染 API 卡片
-    const renderApiCard = (api) => {
+    const renderApiCard = (api, dragProps = {}) => {
         const hasCredentials = api.accessToken && api.userId;
         const quota = quotaData[api.id];
         const lastUsed = api.lastUsedAt
@@ -399,22 +478,38 @@ const ApiConfigManager = () => {
                 key={api.id}
                 style={{
                     marginBottom: 12,
-                    border: '1px solid #e8e8e8',
+                    border: dragProps.isDragging ? '2px solid #1890ff' : '1px solid #e8e8e8',
                     borderRadius: 6,
                     background: 'white',
-                    transition: 'all 0.3s',
+                    transition: dragProps.isDragging ? 'none' : 'all 0.3s',
+                    boxShadow: dragProps.isDragging ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                    cursor: dragProps.isDragging ? 'grabbing' : 'default',
                 }}
                 bodyStyle={{ padding: '12px 16px' }}
             >
                 <Spin spinning={quota?.loading || false}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ flex: 1 }}>
-                            {/* 名称 */}
-                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-                                <Title heading={6} style={{ margin: 0, fontSize: 15 }}>
-                                    {api.name}
-                                </Title>
+                        {/* 左侧：拖拽手柄 + 内容区 */}
+                        <div style={{ display: 'flex', flex: 1, alignItems: 'flex-start' }}>
+                            {/* 拖拽手柄 */}
+                            <div
+                                {...dragProps.attributes}
+                                {...dragProps.listeners}
+                                className="drag-handle"
+                                aria-label="拖拽排序"
+                                title="拖动调整顺序"
+                            >
+                                <IconHandle />
                             </div>
+
+                            {/* 内容区 */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                {/* 名称 */}
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                                    <Title heading={6} style={{ margin: 0, fontSize: 15 }}>
+                                        {api.name}
+                                    </Title>
+                                </div>
 
                             {/* URL */}
                             <Text type="tertiary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
@@ -446,6 +541,7 @@ const ApiConfigManager = () => {
                                 <Text type="tertiary" style={{ fontSize: 11 }}>
                                     {lastUsed}
                                 </Text>
+                            </div>
                             </div>
                         </div>
 
@@ -557,9 +653,22 @@ const ApiConfigManager = () => {
                     style={{ padding: 60 }}
                 />
             ) : (
-                <div>
-                    {apiConfigs.map(renderApiCard)}
-                </div>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={apiConfigs.map(api => api.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {apiConfigs.map(api => (
+                            <SortableCard key={api.id} itemId={api.id}>
+                                {(dragProps) => renderApiCard(api, dragProps)}
+                            </SortableCard>
+                        ))}
+                    </SortableContext>
+                </DndContext>
             )}
 
             {/* 添加/编辑对话框 */}

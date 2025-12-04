@@ -37,3 +37,22 @@
         transform: rotate(360deg);
     }
 }
+
+/* 拖拽手柄样式 */
+.drag-handle {
+    cursor: grab;
+    margin-right: 12px;
+    padding-top: 4px;
+    color: #999;
+    font-size: 16px;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.drag-handle:hover {
+    color: #1890ff;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
