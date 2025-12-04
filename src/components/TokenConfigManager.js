@@ -10,7 +10,8 @@ import {
     addTokenConfig,
     updateTokenConfig,
     deleteTokenConfig,
-    reorderTokenConfigs
+    reorderTokenConfigs,
+    getAllApiConfigs
 } from '../helpers/utils';
 import { timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
@@ -21,7 +22,7 @@ const { Panel } = Collapse;
 const TokenConfigManager = () => {
     const [tokenConfigs, setTokenConfigs] = useState([]);
     const tokenConfigsRef = useRef([]);
-    const [queryData, setQueryData] = useState({}); // { tokenId: { balance, usage, accessdate, valid, loading } }
+    const [queryData, setQueryData] = useState({}); // { tokenId: { balance, usage, todayUsage, accessdate, valid, loading } }
 
     // 详情Modal相关状态
     const [detailVisible, setDetailVisible] = useState(false);
@@ -155,7 +156,7 @@ const TokenConfigManager = () => {
             const subscriptionData = subscription.data;
             const balance = subscriptionData.hard_limit_usd;
 
-            // 查询使用量
+            // 查询使用量（过去100天）
             let now = new Date();
             let start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
             let start_date = start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate();
@@ -168,11 +169,22 @@ const TokenConfigManager = () => {
             });
             const usage = usageRes.data.total_usage / 100;
 
+            // 查询今日使用量
+            let today = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+            const todayUsageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${today}&end_date=${today}`, {
+                headers: {
+                    'Authorization': `Bearer ${token.apiKey}`,
+                    'X-Target-BaseUrl': token.baseUrl
+                },
+            });
+            const todayUsage = todayUsageRes.data.total_usage / 100;
+
             setQueryData(prev => ({
                 ...prev,
                 [token.id]: {
                     balance,
                     usage,
+                    todayUsage,
                     accessdate: 0, // OpenAI API 没有过期时间
                     valid: true,
                     loading: false
@@ -611,9 +623,14 @@ const TokenConfigManager = () => {
                                     <Text style={{ fontSize: 11, marginRight: 12 }}>
                                         已用：<Text strong>${data.usage.toFixed(3)}</Text>
                                     </Text>
-                                    <Text style={{ fontSize: 11 }}>
+                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
                                         剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
                                     </Text>
+                                    {data.todayUsage !== undefined && (
+                                        <Text style={{ fontSize: 11 }}>
+                                            今日：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
+                                        </Text>
+                                    )}
                                 </div>
                             )}
                             </div>
@@ -798,10 +815,21 @@ const TokenConfigManager = () => {
                         rules={[{ required: true, message: '名称不能为空' }]}
                         style={{ marginBottom: 12 }}
                     />
-                    <Form.Input
+                    <Form.Select
                         field="baseUrl"
                         label="Base URL"
-                        placeholder="https://api.openai.com"
+                        placeholder="请选择或输入 Base URL"
+                        filter
+                        allowCreate
+                        optionList={(() => {
+                            const apiConfigs = getAllApiConfigs();
+                            // 去重并排序
+                            const uniqueUrls = [...new Set(apiConfigs.map(c => c.baseUrl))];
+                            return uniqueUrls.map(url => ({
+                                label: url,
+                                value: url
+                            }));
+                        })()}
                         rules={[
                             { required: true, message: 'Base URL 不能为空' },
                             {
@@ -825,7 +853,7 @@ const TokenConfigManager = () => {
                                 }
                             }
                         ]}
-                        extraText="必须使用 HTTPS 协议,结尾不要带 /"
+                        extraText="可从API配置中选择，或手动输入新URL（必须使用HTTPS，结尾不要带 /）"
                         style={{ marginBottom: 12 }}
                     />
                     <Form.Input
