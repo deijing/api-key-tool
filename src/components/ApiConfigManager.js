@@ -10,7 +10,8 @@ import {
     addApiConfig,
     updateApiConfig,
     deleteApiConfig,
-    reorderApiConfigs
+    reorderApiConfigs,
+    parseApiError
 } from '../helpers/utils';
 
 const { Text, Title } = Typography;
@@ -173,22 +174,19 @@ const ApiConfigManager = () => {
             console.error('[ApiConfigManager] 请求失败:', error);
             setQuotaData(prev => ({ ...prev, [api.id]: { loading: false } }));
 
-            // 详细的错误信息
-            let errorMsg = '网络错误';
-            if (error.response) {
-                // 服务器返回了错误响应
-                errorMsg = error.response.data?.message || `服务器错误 (${error.response.status})`;
-                console.error('[ApiConfigManager] 服务器响应:', error.response.data);
-            } else if (error.request) {
-                // 请求已发送但没有收到响应（可能是CORS或网络问题）
-                errorMsg = '无法连接到服务器，请检查网络或API地址是否正确';
-                console.error('[ApiConfigManager] 无响应:', error.request);
+            // 使用新的错误解析工具
+            const { message: errorMessage, quotaDepleted } = parseApiError(error);
+
+            // 根据错误类型生成不同的提示
+            let errorMsg;
+            if (quotaDepleted) {
+                errorMsg = `查询失败：API额度已用尽（${errorMessage}）`;
             } else {
-                // 其他错误
-                errorMsg = error.message || '未知错误';
+                errorMsg = `查询失败：${errorMessage}`;
             }
+
             if (!silent) {
-                Toast.error('查询失败：' + errorMsg);
+                Toast.error(errorMsg);
             }
             return { success: false };
         }

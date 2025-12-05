@@ -685,3 +685,111 @@ export function reorderTokenConfigs(orderedConfigs) {
   saveAllTokenConfigs(orderedConfigs);
   return true;
 }
+
+// ==================== API 错误解析工具 ====================
+
+/**
+ * 解析 API 错误响应，提取错误信息并判断是否为额度耗尽错误
+ *
+ * @param {Error} error - 错误对象（通常来自 axios 或 fetch）
+ * @returns {{ message: string, quotaDepleted: boolean }} 解析结果
+ *
+ * @example
+ * // 新格式（嵌套的 error 对象）
+ * const error1 = {
+ *   response: {
+ *     data: {
+ *       error: {
+ *         message: "[sk-xxx] 该令牌额度已用尽 RemainQuota = -17453",
+ *         code: "",
+ *         type: "new_api_error"
+ *       }
+ *     }
+ *   }
+ * };
+ * parseApiError(error1) // => { message: "[sk-xxx] 该令牌额度已用尽...", quotaDepleted: true }
+ *
+ * // 旧格式（直接的 message 字段）
+ * const error2 = {
+ *   response: {
+ *     data: { message: "Invalid API key" },
+ *     status: 401
+ *   }
+ * };
+ * parseApiError(error2) // => { message: "Invalid API key", quotaDepleted: false }
+ */
+export function parseApiError(error) {
+  let message = '未知错误';
+  let quotaDepleted = false;
+
+  // 按优先级提取错误信息
+  if (error.response) {
+    const responseData = error.response.data;
+
+    // 1. 优先尝试嵌套的 error.message（新格式）
+    if (responseData?.error?.message) {
+      message = responseData.error.message;
+    }
+    // 2. 然后尝试直接的 message 字段（旧格式）
+    else if (responseData?.message) {
+      message = responseData.message;
+    }
+    // 3. 如果 data 本身是字符串
+    else if (typeof responseData === 'string' && responseData.trim()) {
+      message = responseData.trim();
+    }
+    // 4. 使用 HTTP 状态文本
+    else if (error.response.statusText) {
+      message = `服务器错误 (${error.response.status}): ${error.response.statusText}`;
+    }
+    // 5. 只有状态码
+    else if (error.response.status) {
+      message = `服务器错误 (${error.response.status})`;
+    }
+    // 6. 如果以上都为空，尝试使用 error.message
+    else if (error.message) {
+      message = error.message;
+    }
+  }
+  // 网络错误（请求发送但没有响应）
+  else if (error.request) {
+    message = '无法连接到服务器，请检查网络';
+  }
+  // 其他错误
+  else if (error.message) {
+    message = error.message;
+  }
+
+  // 规范化 message 为字符串（防止非字符串导致后续操作崩溃）
+  const normalizedMessage = typeof message === 'string' ? message : String(message || '未知错误');
+
+  // 检测是否为额度耗尽错误
+  // 1. 检查关键词
+  const quotaKeywords = [
+    '额度已用尽',
+    '额度不足',
+    'out of quota',
+    'quota exceeded',
+    'insufficient quota',
+    'quota exhausted',
+    'no quota',
+    'balance insufficient',
+    'insufficient balance',
+  ];
+
+  const lowerMessage = normalizedMessage.toLowerCase();
+  const hasQuotaKeyword = quotaKeywords.some(keyword =>
+    lowerMessage.includes(keyword.toLowerCase())
+  );
+
+  // 2. 检查 RemainQuota 是否为负数（支持 = 和 : 分隔符）
+  const remainQuotaMatch = normalizedMessage.match(/RemainQuota\s*[:=]?\s*(-?\d+)/i);
+  const hasNegativeQuota = remainQuotaMatch && parseInt(remainQuotaMatch[1]) < 0;
+
+  quotaDepleted = hasQuotaKeyword || hasNegativeQuota;
+
+  return {
+    message: normalizedMessage,
+    quotaDepleted
+  };
+}

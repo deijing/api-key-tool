@@ -11,7 +11,8 @@ import {
     updateTokenConfig,
     deleteTokenConfig,
     reorderTokenConfigs,
-    getAllApiConfigs
+    getAllApiConfigs,
+    parseApiError
 } from '../helpers/utils';
 import { timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
@@ -216,14 +217,17 @@ const TokenConfigManager = () => {
                 [token.id]: { loading: false, valid: false }
             }));
 
-            let errorMsg = '查询失败';
-            if (error.response) {
-                errorMsg = `查询失败：${error.response.data?.message || error.response.statusText || '服务器错误'}`;
-            } else if (error.request) {
-                errorMsg = '查询失败：无法连接到服务器，请检查网络';
+            // 使用新的错误解析工具
+            const { message: errorMessage, quotaDepleted } = parseApiError(error);
+
+            // 根据错误类型生成不同的提示
+            let errorMsg;
+            if (quotaDepleted) {
+                errorMsg = `查询失败：令牌额度已用尽（${errorMessage}）`;
             } else {
-                errorMsg = `查询失败：${error.message || '未知错误'}`;
+                errorMsg = `查询失败：${errorMessage}`;
             }
+
             if (!silent) {
                 Toast.error(errorMsg);
             }
