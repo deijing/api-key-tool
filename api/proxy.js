@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   // 设置CORS头，允许所有域名访问（艹，开发环境必须的）
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, New-Api-User, X-Target-BaseUrl, Cookie');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, New-Api-User, X-Target-BaseUrl, X-Cubence-Token');
 
   // 处理OPTIONS预检请求（这个SB浏览器的安全机制）
   if (req.method === 'OPTIONS') {
@@ -40,12 +40,19 @@ export default async function handler(req, res) {
 
     // 准备转发的请求头（排除一些不需要的头）
     const forwardHeaders = {};
-    const headersToForward = ['authorization', 'content-type', 'new-api-user', 'cookie'];
+    const headersToForward = ['authorization', 'content-type', 'new-api-user'];
 
     for (const key of headersToForward) {
       if (req.headers[key]) {
         forwardHeaders[key] = req.headers[key];
       }
+    }
+
+    // 特殊处理：Cubence API 使用 Cookie 认证
+    // 如果有 X-Cubence-Token 头，构建 Cookie 头
+    if (req.headers['x-cubence-token']) {
+      forwardHeaders['cookie'] = `token=${req.headers['x-cubence-token']}`;
+      console.log('[Proxy] 为 Cubence API 构建 Cookie 头');
     }
 
     // 准备fetch配置

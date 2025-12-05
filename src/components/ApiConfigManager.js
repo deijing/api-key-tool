@@ -151,10 +151,11 @@ const ApiConfigManager = () => {
 
             if (isCubence) {
                 // Cubence API 特殊处理：使用 Cookie 认证
+                // 注意：浏览器不允许 JS 直接设置 Cookie 头，需要用自定义头传递
                 const res = await API.get('/api/proxy/api/v1/auth/me', {
                     headers: {
                         'Content-Type': 'application/json',
-                        'Cookie': `token=${api.accessToken}`,
+                        'X-Cubence-Token': api.accessToken,  // 用自定义头传递 token
                         'X-Target-BaseUrl': api.baseUrl
                     }
                 });
