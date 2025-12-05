@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Input, Typography, Table, Tag, Spin, Card, Collapse, Toast, Space, Tabs, TabPane } from '@douyinfe/semi-ui';
 import { IconSearch, IconCopy, IconDownload, IconUpload, IconPlus } from '@douyinfe/semi-icons';
 import { API, timestamp2string, copy, getConfig } from '../helpers';
-import { getAllApiConfigs, getAllTokenConfigs, addApiConfig, addTokenConfig } from '../helpers/utils';
+import { getAllApiConfigs, getAllTokenConfigs, addApiConfig, addTokenConfig, parseApiError } from '../helpers/utils';
 import { stringToColor } from '../helpers/render';
 import ApiConfigManager from './ApiConfigManager';
 import TokenConfigManager from './TokenConfigManager';
@@ -141,16 +141,16 @@ const KeyUsage = () => {
             setLoading(false);
         } catch (e) {
             console.error('[LogsTable] 查询失败:', e);
-            // 详细的错误信息
-            let errorMsg = '查询失败，请输入正确的令牌';
-            if (e.response) {
-                errorMsg = `查询失败：${e.response.data?.message || e.response.statusText || '服务器错误'}`;
-                console.error('[LogsTable] 服务器响应:', e.response.data);
-            } else if (e.request) {
-                errorMsg = '查询失败：无法连接到服务器，请检查网络';
-                console.error('[LogsTable] 无响应:', e.request);
+
+            // 使用新的错误解析工具
+            const { message: errorMessage, quotaDepleted } = parseApiError(e);
+
+            // 根据错误类型生成不同的提示
+            let errorMsg;
+            if (quotaDepleted) {
+                errorMsg = `查询失败：令牌额度已用尽（${errorMessage}）`;
             } else {
-                errorMsg = `查询失败：${e.message}`;
+                errorMsg = `查询失败：${errorMessage}`;
             }
             Toast.error(errorMsg);
             resetData(); // 如果发生错误，重置所有数据为默认值
