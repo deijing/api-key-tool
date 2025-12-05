@@ -121,9 +121,20 @@ const ApiConfigManager = () => {
     // 查询 API 额度
     // silent: 静默模式，不显示成功Toast(用于批量自动查询)
     const fetchQuota = async (api, silent = false) => {
-        if (!api.accessToken || !api.userId) {
+        // 检测是否为 Cubence API
+        const isCubence = api.baseUrl.toLowerCase().includes('cubence.com');
+
+        // 验证必填字段（Cubence 不需要 userId）
+        if (!api.accessToken) {
             if (!silent) {
-                Toast.warning('请先配置访问令牌和用户ID');
+                Toast.warning('请先配置访问令牌');
+            }
+            return { success: false };
+        }
+
+        if (!isCubence && !api.userId) {
+            if (!silent) {
+                Toast.warning('请先配置用户ID');
             }
             return { success: false };
         }
@@ -135,40 +146,73 @@ const ApiConfigManager = () => {
         }));
 
         try {
-            // 通过Vercel云函数代理请求，避免CORS问题
-            // X-Target-BaseUrl头告诉云函数要转发到哪个API服务器
-            console.log('[ApiConfigManager] 通过云函数代理请求到:', api.baseUrl);
 
-            const res = await API.get('/api/proxy/api/user/self', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${api.accessToken}`,
-                    'New-Api-User': api.userId,
-                    'X-Target-BaseUrl': api.baseUrl  // 云函数根据这个头转发请求
-                }
-            });
+            console.log('[ApiConfigManager] 通过云函数代理请求到:', api.baseUrl, isCubence ? '(Cubence)' : '(NewAPI)');
 
-            console.log('[ApiConfigManager] 请求成功:', res.data);
-            const { success, data } = res.data;
-            if (success && data) {
-                const quota = {
-                    planName: data.group || '默认套餐',
-                    remaining: data.quota / 500000,
-                    used: data.used_quota / 500000,
-                    total: (data.quota + data.used_quota) / 500000,
-                    loading: false
-                };
-                setQuotaData(prev => ({ ...prev, [api.id]: quota }));
-                if (!silent) {
-                    Toast.success('额度查询成功');
+            if (isCubence) {
+                // Cubence API 特殊处理：使用 Cookie 认证
+                const res = await API.get('/api/proxy/api/v1/auth/me', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cookie': `token=${api.accessToken}`,
+                        'X-Target-BaseUrl': api.baseUrl
+                    }
+                });
+
+                console.log('[ApiConfigManager] Cubence请求成功:', res.data);
+                const { user } = res.data;
+
+                if (user && user.normal_balance !== undefined) {
+                    // Cubence 的余额单位是 1/500000 USD
+                    const remaining = user.normal_balance / 500000;
+                    const quota = {
+                        planName: `${user.name || user.username || '用户'} (TL${user.trust_level || 0})`,
+                        remaining: remaining,
+                        used: 0,  // Cubence 不返回已用额度
+                        total: remaining,  // 只显示剩余额度
+                        loading: false
+                    };
+                    setQuotaData(prev => ({ ...prev, [api.id]: quota }));
+                    if (!silent) {
+                        Toast.success('额度查询成功');
+                    }
+                    return { success: true };
+                } else {
+                    throw new Error('Cubence API 返回数据格式异常');
                 }
-                return { success: true };
             } else {
-                setQuotaData(prev => ({ ...prev, [api.id]: { loading: false } }));
-                if (!silent) {
-                    Toast.error('查询失败：' + (res.data.message || '未知错误'));
+                // NewAPI 标准格式处理
+                const res = await API.get('/api/proxy/api/user/self', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${api.accessToken}`,
+                        'New-Api-User': api.userId,
+                        'X-Target-BaseUrl': api.baseUrl
+                    }
+                });
+
+                console.log('[ApiConfigManager] NewAPI请求成功:', res.data);
+                const { success, data } = res.data;
+                if (success && data) {
+                    const quota = {
+                        planName: data.group || '默认套餐',
+                        remaining: data.quota / 500000,
+                        used: data.used_quota / 500000,
+                        total: (data.quota + data.used_quota) / 500000,
+                        loading: false
+                    };
+                    setQuotaData(prev => ({ ...prev, [api.id]: quota }));
+                    if (!silent) {
+                        Toast.success('额度查询成功');
+                    }
+                    return { success: true };
+                } else {
+                    setQuotaData(prev => ({ ...prev, [api.id]: { loading: false } }));
+                    if (!silent) {
+                        Toast.error('查询失败：' + (res.data.message || '未知错误'));
+                    }
+                    return { success: false };
                 }
-                return { success: false };
             }
         } catch (error) {
             console.error('[ApiConfigManager] 请求失败:', error);
@@ -198,7 +242,11 @@ const ApiConfigManager = () => {
     // 自动查询所有有凭证的API
     const autoFetchAllQuotas = useCallback(async () => {
         console.log('[ApiConfigManager] 执行自动查询');
-        const validApis = apiConfigsRef.current.filter(api => api.accessToken && api.userId);
+        const validApis = apiConfigsRef.current.filter(api => {
+            const isCubence = api.baseUrl.toLowerCase().includes('cubence.com');
+            // Cubence 只需要 accessToken，NewAPI 需要 accessToken 和 userId
+            return api.accessToken && (isCubence || api.userId);
+        });
 
         if (validApis.length === 0) {
             return;
@@ -482,7 +530,9 @@ const ApiConfigManager = () => {
 
     // 渲染 API 卡片
     const renderApiCard = (api, dragProps = {}) => {
-        const hasCredentials = api.accessToken && api.userId;
+        const isCubence = api.baseUrl.toLowerCase().includes('cubence.com');
+        // Cubence 只需要 accessToken，NewAPI 需要 accessToken 和 userId
+        const hasCredentials = api.accessToken && (isCubence || api.userId);
         const quota = quotaData[api.id];
         const lastUsed = api.lastUsedAt
             ? (() => {
