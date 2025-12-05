@@ -164,8 +164,8 @@ const ApiConfigManager = () => {
                 const { user } = res.data;
 
                 if (user && user.normal_balance !== undefined) {
-                    // Cubence 的余额单位是 1/500000 USD
-                    const remaining = user.normal_balance / 500000;
+                    // Cubence 的余额单位是 1/10000 USD
+                    const remaining = user.normal_balance / 10000;
                     const quota = {
                         planName: `${user.name || user.username || '用户'} (TL${user.trust_level || 0})`,
                         remaining: remaining,
