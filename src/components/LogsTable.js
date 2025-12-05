@@ -148,7 +148,7 @@ const KeyUsage = () => {
             // 根据错误类型生成不同的提示
             let errorMsg;
             if (quotaDepleted) {
-                errorMsg = `查询失败：令牌额度已用尽（${errorMessage}）`;
+                errorMsg = '令牌额度已用尽';
             } else {
                 errorMsg = `查询失败：${errorMessage}`;
             }

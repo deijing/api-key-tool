@@ -220,10 +220,22 @@ const TokenConfigManager = () => {
             // 使用新的错误解析工具
             const { message: errorMessage, quotaDepleted } = parseApiError(error);
 
+            // 如果是额度耗尽，设置特殊状态
+            if (quotaDepleted) {
+                setQueryData(prev => ({
+                    ...prev,
+                    [token.id]: {
+                        loading: false,
+                        valid: false,
+                        quotaDepleted: true  // 标记为额度耗尽
+                    }
+                }));
+            }
+
             // 根据错误类型生成不同的提示
             let errorMsg;
             if (quotaDepleted) {
-                errorMsg = `查询失败：令牌额度已用尽（${errorMessage}）`;
+                errorMsg = '令牌额度已用尽';
             } else {
                 errorMsg = `查询失败：${errorMessage}`;
             }
@@ -628,30 +640,48 @@ const TokenConfigManager = () => {
                             </Text>
 
                             {/* 查询结果 */}
-                            {data && !data.loading && data.valid && (
-                                <div style={{
-                                    marginTop: 8,
-                                    marginBottom: 4,
-                                    padding: '6px 8px',
-                                    background: '#f7f8fa',
-                                    borderRadius: 4,
-                                    fontSize: 11
-                                }}>
-                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                        总额度：<Text strong>${data.balance === 100000000 ? '无限' : data.balance.toFixed(3)}</Text>
-                                    </Text>
-                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                        已用：<Text strong>${data.usage.toFixed(3)}</Text>
-                                    </Text>
-                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                        剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
-                                    </Text>
-                                    {data.todayUsage !== undefined && (
-                                        <Text style={{ fontSize: 11 }}>
-                                            今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
-                                        </Text>
-                                    )}
-                                </div>
+                            {data && !data.loading && (
+                                <>
+                                    {data.valid ? (
+                                        <div style={{
+                                            marginTop: 8,
+                                            marginBottom: 4,
+                                            padding: '6px 8px',
+                                            background: '#f7f8fa',
+                                            borderRadius: 4,
+                                            fontSize: 11
+                                        }}>
+                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                总额度：<Text strong>${data.balance === 100000000 ? '无限' : data.balance.toFixed(3)}</Text>
+                                            </Text>
+                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                已用：<Text strong>${data.usage.toFixed(3)}</Text>
+                                            </Text>
+                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
+                                            </Text>
+                                            {data.todayUsage !== undefined && (
+                                                <Text style={{ fontSize: 11 }}>
+                                                    今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
+                                                </Text>
+                                            )}
+                                        </div>
+                                    ) : data.quotaDepleted ? (
+                                        <div style={{
+                                            marginTop: 8,
+                                            marginBottom: 4,
+                                            padding: '6px 8px',
+                                            background: '#fff2e8',
+                                            borderRadius: 4,
+                                            fontSize: 11,
+                                            color: '#d4380d'
+                                        }}>
+                                            <Text style={{ fontSize: 11, color: '#d4380d' }}>
+                                                ⚠️ 令牌额度已耗尽
+                                            </Text>
+                                        </div>
+                                    ) : null}
+                                </>
                             )}
                             </div>
                         </div>
