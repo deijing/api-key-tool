@@ -34,7 +34,7 @@ const ApiConfigManager = () => {
     });
     const [refreshInterval, setRefreshInterval] = useState(() => {
         const saved = localStorage.getItem('api_refresh_interval');
-        return saved ? parseInt(saved) : 10;
+        return saved ? parseInt(saved) : 600;
     });
     const timerRef = useRef(null);
 
@@ -323,7 +323,7 @@ const ApiConfigManager = () => {
 
     // 修改查询间隔
     const handleIntervalChange = (value) => {
-        if (value && value >= 5 && value <= 300) {
+        if (value && value >= 5 && value <= 3600) {
             setRefreshInterval(value);
             localStorage.setItem('api_refresh_interval', value.toString());
         }
@@ -707,7 +707,7 @@ const ApiConfigManager = () => {
                                 value={refreshInterval}
                                 onChange={handleIntervalChange}
                                 min={5}
-                                max={300}
+                                max={3600}
                                 step={5}
                                 suffix="秒"
                                 style={{ width: 100 }}
