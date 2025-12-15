@@ -252,7 +252,7 @@ const ShareTokenView = ({ visible, shareData, onClose }) => {
                         borderRadius: 8,
                         cursor: 'pointer',
                     }}
-                    onClick={() => window.open('https://www.ikuncode.cc', '_blank')}
+                    onClick={() => window.open('https://api.ikuncode.cc', '_blank')}
                 >
                     <Space>
                         <img
