@@ -27,7 +27,8 @@ const HeaderBar = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         height: '100%',
-        padding: '0 16px',
+        padding: '8px 16px',
+        minHeight: 56,
       }}
       className="section-fade"
     >
@@ -37,6 +38,7 @@ const HeaderBar = () => {
           display: 'flex',
           alignItems: 'center',
           cursor: 'pointer',
+          textDecoration: 'none',
         }}
         onClick={() => window.open('https://api.ikuncode.cc', '_blank')}
       >
@@ -44,9 +46,9 @@ const HeaderBar = () => {
           <img
             src={process.env.PUBLIC_URL + '/logo.png'}
             alt="API Key Tool"
-            style={{ height: 36, width: 36, borderRadius: 8 }}
+            style={{ height: 40, width: 40, borderRadius: 8 }}
           />
-          <div style={{ lineHeight: 1.3 }}>
+          <div style={{ lineHeight: 1.4 }}>
             <Text strong style={{ fontSize: 18, color: 'var(--semi-color-primary)' }}>API Key Tool</Text>
             <br />
             <Text type="tertiary" style={{ fontSize: 12 }}>由 IkunCode 赞助开发</Text>

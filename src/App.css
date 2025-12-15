@@ -65,6 +65,6 @@
 
 .api-name-link:hover,
 .api-name-link:focus-visible {
-    text-decoration: underline;
+    text-decoration: none;
     outline: none;
 }
