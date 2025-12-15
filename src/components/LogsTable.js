@@ -117,13 +117,23 @@ const KeyUsage = () => {
             end: new Date(),
         },
         {
-            text: '最近7天',
+            text: '7天',
             start: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
             end: new Date(),
         },
         {
-            text: '最近30天',
+            text: '30天',
             start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+        {
+            text: '3个月',
+            start: new Date(Date.now() - 89 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+        {
+            text: '1年',
+            start: new Date(Date.now() - 364 * 24 * 60 * 60 * 1000),
             end: new Date(),
         },
     ];
@@ -176,6 +186,9 @@ const KeyUsage = () => {
                 if (success) {
                     setLogs(logData.reverse());
                     setActiveKeys(['1', '2']); // 自动展开两个折叠面板
+                    // 默认设置日期范围为今日
+                    const today = new Date();
+                    setDateRange([today, today]);
                 } else {
                     Toast.error('查询调用详情失败，请输入正确的令牌');
                 }

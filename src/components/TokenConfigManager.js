@@ -525,7 +525,9 @@ const TokenConfigManager = () => {
         }
 
         setDetailLoading(true);
-        setDetailDateRange([]); // 重置日期筛选
+        // 默认设置日期范围为今日
+        const today = new Date();
+        setDetailDateRange([today, today]);
         try {
             // 查询使用详情（这个接口可能不是所有服务商都支持）
             // 如果是OpenAI官方API，可能没有详细日志接口
@@ -588,13 +590,23 @@ const TokenConfigManager = () => {
             end: new Date(),
         },
         {
-            text: '最近7天',
+            text: '7天',
             start: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
             end: new Date(),
         },
         {
-            text: '最近30天',
+            text: '30天',
             start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+        {
+            text: '3个月',
+            start: new Date(Date.now() - 89 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+        {
+            text: '1年',
+            start: new Date(Date.now() - 364 * 24 * 60 * 60 * 1000),
             end: new Date(),
         },
     ];
