@@ -173,22 +173,21 @@ const TokenConfigManager = () => {
             let usage = 0;
             let todayUsage = undefined;
 
-            // 仅在非轻量模式下查询用量
-            if (!isLightQuery) {
-                // 查询使用量（过去100天）
-                let now = new Date();
-                let start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
-                let start_date = start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate();
-                let end_date = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
-                const usageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${start_date}&end_date=${end_date}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token.apiKey}`,
-                        'X-Target-BaseUrl': token.baseUrl
-                    },
-                });
-                usage = usageRes.data.total_usage / 100;
+            // 查询使用量（过去100天）- 轻量和完整模式都需要
+            let now = new Date();
+            let start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
+            let start_date = start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate();
+            let end_date = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+            const usageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${start_date}&end_date=${end_date}`, {
+                headers: {
+                    'Authorization': `Bearer ${token.apiKey}`,
+                    'X-Target-BaseUrl': token.baseUrl
+                },
+            });
+            usage = usageRes.data.total_usage / 100;
 
-                // 查询今日使用量：通过日志计算
+            // 仅在非轻量模式下查询日志计算今日使用
+            if (!isLightQuery) {
                 todayUsage = 0;
                 try {
                     const logRes = await API.get(`/api/proxy/api/log/token?key=${token.apiKey}`, {
@@ -223,7 +222,6 @@ const TokenConfigManager = () => {
                     accessdate: 0, // OpenAI API 没有过期时间
                     valid: true,
                     loading: false,
-                    isLightQuery, // 标记是否为轻量查询结果
                 }
             }));
             if (!silent) {
@@ -348,9 +346,9 @@ const TokenConfigManager = () => {
         setLightQueryMode(checked);
         localStorage.setItem('token_light_query_mode', checked.toString());
         if (checked) {
-            Toast.info('轻量模式：查询时只获取余额，点击详情查看用量');
+            Toast.info('轻量模式：不查询今日使用（需要日志接口）');
         } else {
-            Toast.info('完整模式：查询时获取余额和用量');
+            Toast.info('完整模式：查询今日使用');
         }
     };
 
@@ -538,9 +536,9 @@ const TokenConfigManager = () => {
         setDetailVisible(true);
         setDetailLogs([]);
 
-        // 详情页面强制完整查询，获取完整的余额和用量数据
+        // 详情页面强制完整查询，获取今日使用数据
         const existingData = queryData[token.id];
-        if (!existingData || !existingData.valid || existingData.isLightQuery) {
+        if (!existingData || !existingData.valid || existingData.todayUsage === undefined) {
             // 强制完整查询（forceFullQuery = true）
             await fetchTokenInfo(token, true, true);
         }
@@ -742,26 +740,16 @@ const TokenConfigManager = () => {
                                             <Text style={{ fontSize: 11, marginRight: 12 }}>
                                                 总额度：<Text strong>${data.balance === 100000000 ? '无限' : data.balance.toFixed(3)}</Text>
                                             </Text>
-                                            {/* 仅在非轻量查询结果时显示用量数据 */}
-                                            {!data.isLightQuery && (
-                                                <>
-                                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                                        已用：<Text strong>${data.usage.toFixed(3)}</Text>
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                                        剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
-                                                    </Text>
-                                                    {data.todayUsage !== undefined && (
-                                                        <Text style={{ fontSize: 11 }}>
-                                                            今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
-                                                        </Text>
-                                                    )}
-                                                </>
-                                            )}
-                                            {/* 轻量模式提示 */}
-                                            {data.isLightQuery && (
-                                                <Text type="tertiary" style={{ fontSize: 11 }}>
-                                                    点击详情查看用量
+                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                已用：<Text strong>${data.usage.toFixed(3)}</Text>
+                                            </Text>
+                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
+                                            </Text>
+                                            {/* 仅在完整查询结果时显示今日使用（需要日志接口） */}
+                                            {data.todayUsage !== undefined && (
+                                                <Text style={{ fontSize: 11 }}>
+                                                    今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
                                                 </Text>
                                             )}
                                         </div>
