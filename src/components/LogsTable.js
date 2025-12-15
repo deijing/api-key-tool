@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Button, Input, Typography, Table, Tag, Spin, Card, Collapse, Toast, Space, Tabs, TabPane } from '@douyinfe/semi-ui';
+import React, { useState, useMemo } from 'react';
+import { Button, Input, Typography, Table, Tag, Spin, Card, Collapse, Toast, Space, Tabs, TabPane, DatePicker } from '@douyinfe/semi-ui';
 import { IconSearch, IconCopy, IconDownload, IconUpload, IconPlus } from '@douyinfe/semi-icons';
 import { API, timestamp2string, copy, getConfig } from '../helpers';
 import { getAllApiConfigs, getAllTokenConfigs, addApiConfig, addTokenConfig, parseApiError } from '../helpers/utils';
@@ -54,6 +54,7 @@ const KeyUsage = () => {
     const [loading, setLoading] = useState(false);
     const [activeKeys, setActiveKeys] = useState([]);
     const [tokenValid, setTokenValid] = useState(false);
+    const [dateRange, setDateRange] = useState([]); // 日期筛选范围
 
     // 从配置中读取设置（优先使用 localStorage，否则使用环境变量）
     const showDetail = getConfig('SHOW_DETAIL');
@@ -84,7 +85,48 @@ const KeyUsage = () => {
         setAccessDate("未知");
         setLogs([]);
         setTokenValid(false);
+        setDateRange([]); // 重置日期筛选
     };
+
+    // 日期范围筛选后的日志数据
+    const filteredLogs = useMemo(() => {
+        if (!dateRange || dateRange.length !== 2) {
+            return logs;
+        }
+        const [startDate, endDate] = dateRange;
+        if (!startDate || !endDate) {
+            return logs;
+        }
+        const startTimestamp = Math.floor(new Date(startDate).setHours(0, 0, 0, 0) / 1000);
+        const endTimestamp = Math.floor(new Date(endDate).setHours(23, 59, 59, 999) / 1000);
+
+        return logs.filter(log => {
+            const logTimestamp = Number(log.created_at);
+            return logTimestamp >= startTimestamp && logTimestamp <= endTimestamp;
+        });
+    }, [logs, dateRange]);
+
+    // 判断是否有有效的日期筛选
+    const hasDateFilter = dateRange && dateRange.length === 2 && dateRange[0] && dateRange[1];
+
+    // 日期快捷选项
+    const datePresets = [
+        {
+            text: '今日',
+            start: new Date(),
+            end: new Date(),
+        },
+        {
+            text: '最近7天',
+            start: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+        {
+            text: '最近30天',
+            start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+    ];
 
     const fetchData = async () => {
         if (key === '') {
@@ -705,9 +747,39 @@ const KeyUsage = () => {
                         disabled={!tokenValid}
                     >
                         <Spin spinning={loading}>
+                            {/* 日期筛选区域 */}
+                            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Space>
+                                    <Text type="tertiary" style={{ fontSize: 13 }}>日期筛选：</Text>
+                                    <DatePicker
+                                        type="dateRange"
+                                        value={dateRange}
+                                        onChange={(dates) => setDateRange(dates || [])}
+                                        placeholder={['开始日期', '结束日期']}
+                                        style={{ width: 260 }}
+                                        presets={datePresets}
+                                        presetPosition="left"
+                                    />
+                                    {hasDateFilter && (
+                                        <Button
+                                            size="small"
+                                            theme="borderless"
+                                            onClick={() => setDateRange([])}
+                                        >
+                                            清除筛选
+                                        </Button>
+                                    )}
+                                </Space>
+                                <Text type="tertiary" style={{ fontSize: 12 }}>
+                                    共 {filteredLogs.length} 条记录
+                                    {hasDateFilter && logs.length !== filteredLogs.length && (
+                                        <span>（原 {logs.length} 条）</span>
+                                    )}
+                                </Text>
+                            </div>
                             <Table
                                 columns={columns}
-                                dataSource={logs}
+                                dataSource={filteredLogs}
                                 pagination={{
                                     pageSize: ITEMS_PER_PAGE,
                                     hideOnSinglePage: true,

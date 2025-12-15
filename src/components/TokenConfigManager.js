@@ -1017,10 +1017,11 @@ const TokenConfigManager = () => {
                 }}
                 className="modal-pop"
                 footer={null}
+                fullScreen={detailFullscreen}
                 width={detailFullscreen ? '100%' : 900}
-                style={detailFullscreen ? { top: 0, maxWidth: '100vw' } : undefined}
                 bodyStyle={{
-                    maxHeight: detailFullscreen ? 'calc(100vh - 120px)' : 600,
+                    height: detailFullscreen ? 'calc(100vh - 60px)' : 'auto',
+                    maxHeight: detailFullscreen ? 'none' : 600,
                     overflow: 'auto',
                 }}
             >
