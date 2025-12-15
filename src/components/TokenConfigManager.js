@@ -750,6 +750,27 @@ const TokenConfigManager = () => {
                             {hasApiKey && (
                                 <>
                                     <Button
+                                        theme="borderless"
+                                        icon={<IconLink />}
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            const url = generateShareUrl(token);
+                                            if (!url) {
+                                                Toast.error('分享链接生成失败');
+                                                return;
+                                            }
+                                            const success = await copy(url);
+                                            if (success) {
+                                                Toast.success('分享链接已复制');
+                                            } else {
+                                                Toast.error('复制失败');
+                                            }
+                                        }}
+                                        size="small"
+                                        title="分享"
+                                        className="btn-ghost"
+                                    />
+                                    <Button
                                         theme="light"
                                         type="primary"
                                         icon={<IconRefresh />}
