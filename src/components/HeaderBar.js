@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Nav, Button, Space, Typography } from '@douyinfe/semi-ui';
-import { IconTag } from '@douyinfe/semi-icons-lab';
+import { Button, Space, Typography } from '@douyinfe/semi-ui';
 import { IconSetting } from '@douyinfe/semi-icons';
 import SettingsPanel from './SettingsPanel';
 
@@ -28,54 +27,38 @@ const HeaderBar = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         height: '100%',
+        padding: '0 16px',
       }}
       className="section-fade"
     >
-      <Nav
-        mode='horizontal'
-        header={
-          {
-            text: '令牌查询',
-            logo: (
-              <div style={{ width: '100%', height: '100%' }} className="icon-bounce">
-                <IconTag size='large' />
-              </div>
-            )
-          }
-        }
-      />
-      {/* 赞助商信息 */}
+      {/* 左侧：Logo + 标题 + 赞助信息 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '6px 12px',
-          background: 'var(--semi-color-fill-0)',
-          borderRadius: 6,
           cursor: 'pointer',
-          marginRight: 'auto',
-          marginLeft: 24,
         }}
         onClick={() => window.open('https://api.ikuncode.cc', '_blank')}
       >
-        <Space spacing={8}>
+        <Space spacing={12}>
           <img
             src={process.env.PUBLIC_URL + '/logo.png'}
-            alt="IkunCode"
-            style={{ height: 24, width: 24, borderRadius: 4 }}
+            alt="API Key Tool"
+            style={{ height: 36, width: 36, borderRadius: 8 }}
           />
-          <div style={{ lineHeight: 1.2 }}>
-            <Text strong style={{ fontSize: 13 }}>IkunCode 中转站</Text>
+          <div style={{ lineHeight: 1.3 }}>
+            <Text strong style={{ fontSize: 18, color: 'var(--semi-color-primary)' }}>API Key Tool</Text>
             <br />
-            <Text type="tertiary" style={{ fontSize: 11 }}>赞助开发</Text>
+            <Text type="tertiary" style={{ fontSize: 12 }}>由 IkunCode 赞助开发</Text>
           </div>
         </Space>
       </div>
+
+      {/* 右侧：设置按钮 */}
       <Button
         icon={<IconSetting className="icon-rotate" />}
         theme='borderless'
         onClick={handleSettingsClick}
-        style={{ marginRight: 16 }}
         className="btn-ghost"
       >
         设置
