@@ -647,30 +647,6 @@ const KeyUsage = () => {
         >
             <Tabs activeKey={activeTab} onChange={handleTabChange} type="line" className="tab-animated">
                 <TabPane tab="令牌查询" itemKey="token">
-                    {/* 赞助商信息 */}
-                    <div
-                        style={{
-                            marginBottom: 16,
-                            padding: '10px 14px',
-                            background: 'var(--semi-color-fill-0)',
-                            borderRadius: 8,
-                            cursor: 'pointer',
-                        }}
-                        onClick={() => window.open('https://api.ikuncode.cc', '_blank')}
-                    >
-                        <Space>
-                            <img
-                                src={process.env.PUBLIC_URL + '/logo.png'}
-                                alt="IkunCode"
-                                style={{ height: 32, width: 32, borderRadius: 6 }}
-                            />
-                            <div>
-                                <Text strong style={{ fontSize: 14 }}>IkunCode 中转站</Text>
-                                <br />
-                                <Text type="tertiary" size="small">由 IkunCode 赞助开发</Text>
-                            </div>
-                        </Space>
-                    </div>
                     {/* Base URL 输入框 */}
                     <div style={{ marginBottom: 12 }}>
                         <Input
