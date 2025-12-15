@@ -51,6 +51,11 @@ const TokenConfigManager = () => {
         const saved = localStorage.getItem('token_refresh_interval');
         return saved ? parseInt(saved) : 600;
     });
+    // 轻量查询模式：只查余额，不查用量（默认开启以减少API调用）
+    const [lightQueryMode, setLightQueryMode] = useState(() => {
+        const saved = localStorage.getItem('token_light_query_mode');
+        return saved !== 'false'; // 默认开启
+    });
     const timerRef = useRef(null);
 
     // 使用内容哈希来判断配置是否真正变化（忽略顺序变化）
@@ -134,7 +139,8 @@ const TokenConfigManager = () => {
 
     // 查询令牌信息
     // silent: 静默模式，不显示成功Toast(用于批量自动查询)
-    const fetchTokenInfo = async (token, silent = false) => {
+    // forceFullQuery: 强制完整查询（忽略轻量模式设置）
+    const fetchTokenInfo = async (token, silent = false, forceFullQuery = false) => {
         if (!token.apiKey) {
             if (!silent) {
                 Toast.warning('请先配置API Key');
@@ -148,8 +154,11 @@ const TokenConfigManager = () => {
             [token.id]: { ...prev[token.id], loading: true }
         }));
 
+        // 判断是否使用轻量查询（只查余额）
+        const isLightQuery = lightQueryMode && !forceFullQuery;
+
         try {
-            console.log('[TokenConfigManager] 通过云函数代理查询令牌:', token.baseUrl);
+            console.log('[TokenConfigManager] 通过云函数代理查询令牌:', token.baseUrl, isLightQuery ? '(轻量模式)' : '(完整模式)');
 
             // 查询订阅信息
             const subscription = await API.get('/api/proxy/v1/dashboard/billing/subscription', {
@@ -161,42 +170,48 @@ const TokenConfigManager = () => {
             const subscriptionData = subscription.data;
             const balance = subscriptionData.hard_limit_usd;
 
-            // 查询使用量（过去100天）
-            let now = new Date();
-            let start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
-            let start_date = start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate();
-            let end_date = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
-            const usageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${start_date}&end_date=${end_date}`, {
-                headers: {
-                    'Authorization': `Bearer ${token.apiKey}`,
-                    'X-Target-BaseUrl': token.baseUrl
-                },
-            });
-            const usage = usageRes.data.total_usage / 100;
+            let usage = 0;
+            let todayUsage = undefined;
 
-            // 查询今日使用量：通过日志计算
-            let todayUsage = 0;
-            try {
-                const logRes = await API.get(`/api/proxy/api/log/token?key=${token.apiKey}`, {
+            // 仅在非轻量模式下查询用量
+            if (!isLightQuery) {
+                // 查询使用量（过去100天）
+                let now = new Date();
+                let start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
+                let start_date = start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate();
+                let end_date = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+                const usageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${start_date}&end_date=${end_date}`, {
                     headers: {
+                        'Authorization': `Bearer ${token.apiKey}`,
                         'X-Target-BaseUrl': token.baseUrl
-                    }
+                    },
                 });
-                const { success, data: logData } = logRes.data;
-                if (success && logData && Array.isArray(logData)) {
-                    // 获取今天0点的时间戳
-                    const todayStart = new Date();
-                    todayStart.setHours(0, 0, 0, 0);
-                    const todayStartTimestamp = todayStart.getTime() / 1000;
+                usage = usageRes.data.total_usage / 100;
 
-                    // 筛选今日的日志并累加 quota
-                    todayUsage = logData
-                        .filter(log => log.created_at >= todayStartTimestamp)
-                        .reduce((sum, log) => sum + (log.quota || 0), 0) / 500000;
-                }
-            } catch (err) {
-                console.log('[TokenConfigManager] 查询今日使用日志失败，使用默认值0:', err);
+                // 查询今日使用量：通过日志计算
                 todayUsage = 0;
+                try {
+                    const logRes = await API.get(`/api/proxy/api/log/token?key=${token.apiKey}`, {
+                        headers: {
+                            'X-Target-BaseUrl': token.baseUrl
+                        }
+                    });
+                    const { success, data: logData } = logRes.data;
+                    if (success && logData && Array.isArray(logData)) {
+                        // 获取今天0点的时间戳
+                        const todayStart = new Date();
+                        todayStart.setHours(0, 0, 0, 0);
+                        const todayStartTimestamp = todayStart.getTime() / 1000;
+
+                        // 筛选今日的日志并累加 quota
+                        todayUsage = logData
+                            .filter(log => log.created_at >= todayStartTimestamp)
+                            .reduce((sum, log) => sum + (log.quota || 0), 0) / 500000;
+                    }
+                } catch (err) {
+                    console.log('[TokenConfigManager] 查询今日使用日志失败，使用默认值0:', err);
+                    todayUsage = 0;
+                }
             }
 
             setQueryData(prev => ({
@@ -207,7 +222,8 @@ const TokenConfigManager = () => {
                     todayUsage,
                     accessdate: 0, // OpenAI API 没有过期时间
                     valid: true,
-                    loading: false
+                    loading: false,
+                    isLightQuery, // 标记是否为轻量查询结果
                 }
             }));
             if (!silent) {
@@ -323,6 +339,17 @@ const TokenConfigManager = () => {
             Toast.success(`已开启自动查询，间隔${refreshInterval}秒`);
         } else {
             Toast.info('已关闭自动查询');
+        }
+    };
+
+    // 切换轻量查询模式
+    const handleLightQueryModeChange = (checked) => {
+        setLightQueryMode(checked);
+        localStorage.setItem('token_light_query_mode', checked.toString());
+        if (checked) {
+            Toast.info('轻量模式：查询时只获取余额，点击详情查看用量');
+        } else {
+            Toast.info('完整模式：查询时获取余额和用量');
         }
     };
 
@@ -510,10 +537,11 @@ const TokenConfigManager = () => {
         setDetailVisible(true);
         setDetailLogs([]);
 
-        // 如果已经有查询数据，直接使用；否则先查询
+        // 详情页面强制完整查询，获取完整的余额和用量数据
         const existingData = queryData[token.id];
-        if (!existingData || !existingData.valid) {
-            await fetchTokenInfo(token, true);
+        if (!existingData || !existingData.valid || existingData.isLightQuery) {
+            // 强制完整查询（forceFullQuery = true）
+            await fetchTokenInfo(token, true, true);
         }
 
         // 获取使用明细
@@ -713,15 +741,26 @@ const TokenConfigManager = () => {
                                             <Text style={{ fontSize: 11, marginRight: 12 }}>
                                                 总额度：<Text strong>${data.balance === 100000000 ? '无限' : data.balance.toFixed(3)}</Text>
                                             </Text>
-                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                                已用：<Text strong>${data.usage.toFixed(3)}</Text>
-                                            </Text>
-                                            <Text style={{ fontSize: 11, marginRight: 12 }}>
-                                                剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
-                                            </Text>
-                                            {data.todayUsage !== undefined && (
-                                                <Text style={{ fontSize: 11 }}>
-                                                    今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
+                                            {/* 仅在非轻量查询结果时显示用量数据 */}
+                                            {!data.isLightQuery && (
+                                                <>
+                                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                        已用：<Text strong>${data.usage.toFixed(3)}</Text>
+                                                    </Text>
+                                                    <Text style={{ fontSize: 11, marginRight: 12 }}>
+                                                        剩余：<Text strong style={{ color: '#52c41a' }}>${data.balance === 100000000 ? '无限' : (data.balance - data.usage).toFixed(3)}</Text>
+                                                    </Text>
+                                                    {data.todayUsage !== undefined && (
+                                                        <Text style={{ fontSize: 11 }}>
+                                                            今日使用：<Text strong style={{ color: '#1890ff' }}>${data.todayUsage.toFixed(3)}</Text>
+                                                        </Text>
+                                                    )}
+                                                </>
+                                            )}
+                                            {/* 轻量模式提示 */}
+                                            {data.isLightQuery && (
+                                                <Text type="tertiary" style={{ fontSize: 11 }}>
+                                                    点击详情查看用量
                                                 </Text>
                                             )}
                                         </div>
@@ -841,27 +880,37 @@ const TokenConfigManager = () => {
     return (
         <div>
             {/* 顶部控制区 */}
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                {/* 左侧：自动查询控制 */}
-                <Space>
-                    <Switch
-                        checked={autoRefresh}
-                        onChange={handleAutoRefreshChange}
-                        size="default"
-                    />
-                    <Text type="secondary" style={{ fontSize: 14 }}>自动查询</Text>
-                    {autoRefresh && (
-                        <InputNumber
-                            value={refreshInterval}
-                            onChange={handleIntervalChange}
-                            min={5}
-                            max={3600}
-                            step={5}
-                            suffix="秒"
-                            style={{ width: 100 }}
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                {/* 左侧：查询控制 */}
+                <Space style={{ flexWrap: 'wrap', gap: 16 }}>
+                    <Space>
+                        <Switch
+                            checked={lightQueryMode}
+                            onChange={handleLightQueryModeChange}
                             size="small"
                         />
-                    )}
+                        <Text type="secondary" style={{ fontSize: 13 }}>轻量查询</Text>
+                    </Space>
+                    <Space>
+                        <Switch
+                            checked={autoRefresh}
+                            onChange={handleAutoRefreshChange}
+                            size="small"
+                        />
+                        <Text type="secondary" style={{ fontSize: 13 }}>自动查询</Text>
+                        {autoRefresh && (
+                            <InputNumber
+                                value={refreshInterval}
+                                onChange={handleIntervalChange}
+                                min={5}
+                                max={3600}
+                                step={5}
+                                suffix="秒"
+                                style={{ width: 100 }}
+                                size="small"
+                            />
+                        )}
+                    </Space>
                 </Space>
 
                 {/* 右侧：操作按钮组 */}
