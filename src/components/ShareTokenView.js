@@ -252,6 +252,33 @@ const ShareTokenView = ({ visible, shareData, onClose }) => {
                 </div>
             )}
 
+            {/* 赞助商信息 */}
+            {!loading && !error && (
+                <div
+                    style={{
+                        marginBottom: 20,
+                        padding: '12px 16px',
+                        background: 'var(--semi-color-fill-0)',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                    }}
+                    onClick={() => window.open('https://www.ikuncode.cc', '_blank')}
+                >
+                    <Space>
+                        <img
+                            src={process.env.PUBLIC_URL + '/logo.png'}
+                            alt="IkunCode"
+                            style={{ height: 36, width: 36, borderRadius: 6 }}
+                        />
+                        <div>
+                            <Text strong style={{ fontSize: 15 }}>IkunCode 中转站</Text>
+                            <br />
+                            <Text type="tertiary" size="small">由 IkunCode 赞助开发</Text>
+                        </div>
+                    </Space>
+                </div>
+            )}
+
             {/* 正常内容 */}
             {!loading && !error && (
                 <Collapse
@@ -454,20 +481,15 @@ const ShareTokenView = ({ visible, shareData, onClose }) => {
                     关闭
                 </Button>
 
-                {/* 项目信息 */}
-                <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--semi-color-border)' }}>
-                    <Space>
-                        <img src="/logo.png" alt="ikuncode" style={{ height: 24, verticalAlign: 'middle' }} />
-                        <Text type="tertiary" size="small">
-                            开源项目 by 鸡弟 · 赞助开发 ikuncode ·{' '}
-                            <Text
-                                link={{ href: 'https://github.com/deijing/api-key-tool', target: '_blank' }}
-                                size="small"
-                            >
-                                GitHub
-                            </Text>
-                        </Text>
-                    </Space>
+                {/* GitHub 链接 */}
+                <div style={{ marginTop: 16 }}>
+                    <Text
+                        link={{ href: 'https://github.com/deijing/api-key-tool', target: '_blank' }}
+                        type="tertiary"
+                        size="small"
+                    >
+                        开源项目 by 鸡弟 · GitHub
+                    </Text>
                 </div>
             </div>
         </Modal>
