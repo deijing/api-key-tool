@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber, Collapse, Table, Tag } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle, IconCopy } from '@douyinfe/semi-icons';
+import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber, Collapse, Table, Tag, DatePicker } from '@douyinfe/semi-ui';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle, IconCopy, IconFullScreenStroked, IconShrinkScreenStroked } from '@douyinfe/semi-icons';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -31,6 +31,8 @@ const TokenConfigManager = () => {
     const [detailLogs, setDetailLogs] = useState([]);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailActiveKeys, setDetailActiveKeys] = useState(['1', '2']);
+    const [detailDateRange, setDetailDateRange] = useState([]); // 日期筛选范围 [Date, Date] 或空数组
+    const [detailFullscreen, setDetailFullscreen] = useState(false); // 全屏模式
 
     // 添加/编辑对话框
     const [formVisible, setFormVisible] = useState(false);
@@ -523,6 +525,7 @@ const TokenConfigManager = () => {
         }
 
         setDetailLoading(true);
+        setDetailDateRange([]); // 重置日期筛选
         try {
             // 查询使用详情（这个接口可能不是所有服务商都支持）
             // 如果是OpenAI官方API，可能没有详细日志接口
@@ -553,6 +556,48 @@ const TokenConfigManager = () => {
             setDetailLoading(false);
         }
     };
+
+    // 日期范围筛选后的调用详情数据
+    const filteredDetailLogs = useMemo(() => {
+        if (!detailDateRange || detailDateRange.length !== 2) {
+            return detailLogs;
+        }
+        const [startDate, endDate] = detailDateRange;
+        if (!startDate || !endDate) {
+            return detailLogs;
+        }
+        // 获取开始日期的0点时间戳（秒）
+        const startTimestamp = Math.floor(new Date(startDate).setHours(0, 0, 0, 0) / 1000);
+        // 获取结束日期的23:59:59时间戳（秒）
+        const endTimestamp = Math.floor(new Date(endDate).setHours(23, 59, 59, 999) / 1000);
+
+        return detailLogs.filter(log => {
+            const logTimestamp = Number(log.created_at);
+            return logTimestamp >= startTimestamp && logTimestamp <= endTimestamp;
+        });
+    }, [detailLogs, detailDateRange]);
+
+    // 判断是否有有效的日期筛选
+    const hasDateFilter = detailDateRange && detailDateRange.length === 2 && detailDateRange[0] && detailDateRange[1];
+
+    // 日期快捷选项
+    const datePresets = [
+        {
+            text: '今日',
+            start: new Date(),
+            end: new Date(),
+        },
+        {
+            text: '最近7天',
+            start: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+        {
+            text: '最近30天',
+            start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+            end: new Date(),
+        },
+    ];
 
     // 可排序的卡片包装组件
     const SortableCard = ({ itemId, children }) => {
@@ -953,12 +998,31 @@ const TokenConfigManager = () => {
 
             {/* 详情Modal */}
             <Modal
-                title={`令牌详情 - ${detailToken?.name || ''}`}
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 24 }}>
+                        <span>令牌详情 - {detailToken?.name || ''}</span>
+                        <Button
+                            icon={detailFullscreen ? <IconShrinkScreenStroked /> : <IconFullScreenStroked />}
+                            theme="borderless"
+                            type="tertiary"
+                            onClick={() => setDetailFullscreen(!detailFullscreen)}
+                            title={detailFullscreen ? '退出全屏' : '全屏显示'}
+                        />
+                    </div>
+                }
                 visible={detailVisible}
-                onCancel={() => setDetailVisible(false)}
+                onCancel={() => {
+                    setDetailVisible(false);
+                    setDetailFullscreen(false);
+                }}
                 className="modal-pop"
                 footer={null}
-                width={900}
+                width={detailFullscreen ? '100%' : 900}
+                style={detailFullscreen ? { top: 0, maxWidth: '100vw' } : undefined}
+                bodyStyle={{
+                    maxHeight: detailFullscreen ? 'calc(100vh - 120px)' : 600,
+                    overflow: 'auto',
+                }}
             >
                 {detailToken && (
                     <Collapse
@@ -1014,7 +1078,37 @@ const TokenConfigManager = () => {
                             }
                         >
                             <Spin spinning={detailLoading}>
-                                {detailLogs.length > 0 ? (
+                                {/* 日期筛选区域 */}
+                                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Space>
+                                        <Text type="tertiary" style={{ fontSize: 13 }}>日期筛选：</Text>
+                                        <DatePicker
+                                            type="dateRange"
+                                            value={detailDateRange}
+                                            onChange={(dates) => setDetailDateRange(dates || [])}
+                                            placeholder={['开始日期', '结束日期']}
+                                            style={{ width: 260 }}
+                                            presets={datePresets}
+                                            presetPosition="left"
+                                        />
+                                        {hasDateFilter && (
+                                            <Button
+                                                size="small"
+                                                theme="borderless"
+                                                onClick={() => setDetailDateRange([])}
+                                            >
+                                                清除筛选
+                                            </Button>
+                                        )}
+                                    </Space>
+                                    <Text type="tertiary" style={{ fontSize: 12 }}>
+                                        共 {filteredDetailLogs.length} 条记录
+                                        {hasDateFilter && detailLogs.length !== filteredDetailLogs.length && (
+                                            <span>（原 {detailLogs.length} 条）</span>
+                                        )}
+                                    </Text>
+                                </div>
+                                {filteredDetailLogs.length > 0 ? (
                                     <Table
                                         className="table-row-hover"
                                         columns={[
@@ -1061,14 +1155,14 @@ const TokenConfigManager = () => {
                                                 render: (quota) => `$${(quota / 500000).toFixed(6)}`,
                                             },
                                         ]}
-                                        dataSource={detailLogs}
+                                        dataSource={filteredDetailLogs}
                                         pagination={{
                                             pageSize: ITEMS_PER_PAGE,
                                             hideOnSinglePage: true,
                                         }}
                                     />
                                 ) : (
-                                    <Empty description="该服务商不支持使用明细查询，或暂无调用记录" />
+                                    <Empty description={detailLogs.length > 0 && hasDateFilter ? "当前日期范围内无调用记录" : "该服务商不支持使用明细查询，或暂无调用记录"} />
                                 )}
                             </Spin>
                         </Panel>
