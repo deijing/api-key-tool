@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, Button, Modal, Form, Toast, Space, Typography, Empty, Spin, Switch, InputNumber, Collapse, Table, Tag, DatePicker } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle, IconCopy, IconFullScreenStroked, IconShrinkScreenStroked } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconRefresh, IconEyeOpened, IconDownload, IconUpload, IconHandle, IconCopy, IconFullScreenStroked, IconShrinkScreenStroked, IconLink } from '@douyinfe/semi-icons';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -12,7 +12,9 @@ import {
     deleteTokenConfig,
     reorderTokenConfigs,
     getAllApiConfigs,
-    parseApiError
+    parseApiError,
+    generateShareUrl,
+    copy
 } from '../helpers/utils';
 import { timestamp2string } from '../helpers';
 import { ITEMS_PER_PAGE } from '../constants';
@@ -1013,13 +1015,37 @@ const TokenConfigManager = () => {
                 title={
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 24 }}>
                         <span>令牌详情 - {detailToken?.name || ''}</span>
-                        <Button
-                            icon={detailFullscreen ? <IconShrinkScreenStroked /> : <IconFullScreenStroked />}
-                            theme="borderless"
-                            type="tertiary"
-                            onClick={() => setDetailFullscreen(!detailFullscreen)}
-                            title={detailFullscreen ? '退出全屏' : '全屏显示'}
-                        />
+                        <Space>
+                            <Button
+                                icon={<IconLink />}
+                                theme="borderless"
+                                type="tertiary"
+                                onClick={async () => {
+                                    if (!detailToken) return;
+                                    const url = generateShareUrl(detailToken);
+                                    if (!url) {
+                                        Toast.error('分享链接生成失败');
+                                        return;
+                                    }
+                                    const success = await copy(url);
+                                    if (success) {
+                                        Toast.success('分享链接已复制到剪贴板');
+                                    } else {
+                                        Toast.error('复制失败，请手动复制');
+                                    }
+                                }}
+                                title="分享令牌详情"
+                            >
+                                分享
+                            </Button>
+                            <Button
+                                icon={detailFullscreen ? <IconShrinkScreenStroked /> : <IconFullScreenStroked />}
+                                theme="borderless"
+                                type="tertiary"
+                                onClick={() => setDetailFullscreen(!detailFullscreen)}
+                                title={detailFullscreen ? '退出全屏' : '全屏显示'}
+                            />
+                        </Space>
                     </div>
                 }
                 visible={detailVisible}

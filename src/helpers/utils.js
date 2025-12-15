@@ -793,3 +793,94 @@ export function parseApiError(error) {
     quotaDepleted
   };
 }
+
+// ==================== 分享功能工具函数 ====================
+
+/**
+ * 脱敏API Key，显示前3位和后4位，中间用*替代
+ * @param {string} apiKey - 原始API Key
+ * @returns {string} 脱敏后的API Key
+ */
+export function maskApiKey(apiKey = '') {
+  if (!apiKey) return '';
+  // 对于长度小于等于7的key，完全脱敏（只保留首尾各1字符，其余全部mask）
+  if (apiKey.length <= 7) {
+    return '*'.repeat(apiKey.length);
+  }
+  const head = apiKey.slice(0, 3);
+  const tail = apiKey.slice(-4);
+  return `${head}${'*'.repeat(Math.min(apiKey.length - 7, 20))}${tail}`;
+}
+
+/**
+ * 编码分享数据为URL安全字符串（轻量版：只包含配置信息，打开后实时查询）
+ * @param {Object} tokenData - 令牌配置数据
+ * @returns {string} 编码后的字符串
+ */
+export function encodeShareData(tokenData = {}) {
+  try {
+    const payload = {
+      v: 2, // 版本号，用于区分新旧格式
+      n: tokenData.name || '',
+      b: tokenData.baseUrl || '',
+      k: tokenData.apiKey || '', // 完整 API Key，用于实时查询
+      w: tokenData.website || '',
+    };
+    return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))));
+  } catch (err) {
+    console.error('[Share] encodeShareData failed:', err);
+    return '';
+  }
+}
+
+/**
+ * 解码分享数据
+ * @param {string} shareParam - URL参数中的分享数据
+ * @returns {Object|null} 解码后的分享数据，失败返回null
+ */
+export function decodeShareData(shareParam = '') {
+  try {
+    if (!shareParam) return null;
+    const json = decodeURIComponent(escape(atob(decodeURIComponent(shareParam))));
+    const data = JSON.parse(json);
+
+    // 新格式 v2：轻量级，只包含配置信息
+    if (data.v === 2) {
+      return {
+        version: 2,
+        token: {
+          name: data.n || '',
+          baseUrl: data.b || '',
+          apiKey: data.k || '',
+          website: data.w || '',
+        },
+      };
+    }
+
+    // 旧格式兼容：包含完整的 token、queryData、logs
+    if (data.token && typeof data.token === 'object') {
+      return {
+        version: 1,
+        ...data,
+      };
+    }
+
+    console.error('[Share] Invalid share data structure');
+    return null;
+  } catch (err) {
+    console.error('[Share] decodeShareData failed:', err);
+    return null;
+  }
+}
+
+/**
+ * 生成完整的分享URL（轻量版：只包含配置信息）
+ * @param {Object} tokenData - 令牌配置数据
+ * @returns {string} 完整的分享URL
+ */
+export function generateShareUrl(tokenData = {}) {
+  const encoded = encodeShareData(tokenData);
+  if (!encoded) return '';
+  const { origin, pathname } = window.location;
+  return `${origin}${pathname}?share=${encoded}`;
+}
