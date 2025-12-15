@@ -296,6 +296,7 @@ const TokenConfigManager = () => {
         } else if (failCount > 0) {
             Toast.error(`查询失败 x${failCount}`);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // 页面加载时自动查询一次(刷新网页时触发)
