@@ -76,8 +76,25 @@ const ShareTokenView = ({ visible, shareData, onClose }) => {
             });
             const balance = subscription.data.hard_limit_usd || 0;
 
-            // 2. 查询日志（用量从日志计算）
+            // 2. 查询使用量（过去100天）
             let usage = 0;
+            try {
+                let now = new Date();
+                let start = new Date(now.getTime() - 100 * 24 * 3600 * 1000);
+                let start_date = start.getFullYear() + '-' + (start.getMonth() + 1) + '-' + start.getDate();
+                let end_date = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+                const usageRes = await API.get(`/api/proxy/v1/dashboard/billing/usage?start_date=${start_date}&end_date=${end_date}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token.apiKey}`,
+                        'X-Target-BaseUrl': token.baseUrl
+                    }
+                });
+                usage = usageRes.data.total_usage / 100;
+            } catch (usageErr) {
+                console.log('[ShareTokenView] 查询用量失败:', usageErr);
+            }
+
+            // 3. 查询日志（用于调用详情表格）
             try {
                 const logRes = await API.get(`/api/proxy/api/log/token?key=${token.apiKey}`, {
                     headers: {
@@ -87,8 +104,6 @@ const ShareTokenView = ({ visible, shareData, onClose }) => {
                 const { success, data: logData } = logRes.data;
                 if (success && logData && Array.isArray(logData)) {
                     setLogs(logData);
-                    // 从日志计算用量
-                    usage = logData.reduce((sum, log) => sum + (log.quota || 0), 0) / 500000;
                 }
             } catch (logErr) {
                 console.log('[ShareTokenView] 查询日志失败:', logErr);
